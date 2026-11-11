@@ -86,7 +86,7 @@ typedef struct ph_config {
                                    private directory removed by ph_end; set it to keep the record across games */
     const char *options;        /* NetHack options, "name:Agent,role:Val,..." (NETHACKOPTIONS format); default: NLE's
                                    options and character (name:Agent-mon-hum-neu-mal) */
-    const char *options_file;   /* or a NetHack options file; used when options is NULL */
+    const char *options_file;   /* or a NetHack options file, which replaces options when set */
     const char *wizkit;         /* wizard-mode starting items, or NULL */
     int seeded;                 /* seeds below are used */
     unsigned long seed_core, seed_disp;

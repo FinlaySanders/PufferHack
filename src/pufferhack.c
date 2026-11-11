@@ -122,10 +122,8 @@ ph_start(ph_obs *obs, const ph_config *cfg)
         && (!cfg->wizkit || copy(s->wizkit, sizeof s->wizkit, cfg->wizkit))
         && (cfg->var_dir ? copy(s->vardir, sizeof s->vardir, cfg->var_dir)
                          : (s->vardir_owned = make_vardir(s->vardir, sizeof s->vardir)))
-        && (cfg->options ? copy(s->options, sizeof s->options, cfg->options)
-                         : !cfg->options_file
-                               || snprintf(s->options, sizeof s->options, "@%s", cfg->options_file)
-                                      < (int) sizeof s->options)) {
+        && (cfg->options_file ? snprintf(s->options, sizeof s->options, "@%s", cfg->options_file) < (int) sizeof s->options
+                              : !cfg->options || copy(s->options, sizeof s->options, cfg->options))) {
         s->initial_seeds.seeds[0] = cfg->seed_core;
         s->initial_seeds.seeds[1] = cfg->seed_disp;
         s->initial_seeds.reseed = cfg->reseed != 0;
