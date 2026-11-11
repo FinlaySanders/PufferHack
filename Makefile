@@ -17,7 +17,8 @@ CFLAGS ?= -fno-semantic-interposition -march=x86-64-v3 -fno-stack-protector -fcf
 CXXFLAGS ?= $(CFLAGS)
 BUILD ?= build
 PREFIX ?= /usr/local
-HACKDIR ?= $(HOME)/nethackdir.nle
+DATA_DIR ?= $(abspath $(BUILD))/dat
+HACKDIR ?= $(DATA_DIR)
 NLE_BUILD_EPOCH ?= 1788913779
 
 # LTO is required: mon.c always-inlines functions defined in other files
@@ -67,6 +68,7 @@ $(TPLIBS):
 PHD_SHA_C := $(shell sha256sum src/ph_digest.c | cut -c1-16)
 PHD_SHA_H := $(shell sha256sum include/ph_digest.h | cut -c1-16)
 $(O)/src/ph_digest.o: CPPFLAGS += -DPHD_SRC_SHA_C=0x$(PHD_SHA_C)ULL -DPHD_SRC_SHA_H=0x$(PHD_SHA_H)ULL
+$(O)/src/pufferhack.o: CPPFLAGS += -DPH_DATA_DIR='"$(DATA_DIR)"'
 
 $(O)/%.o: %.c | $(GEN)
 	@mkdir -p $(@D)

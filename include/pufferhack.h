@@ -82,10 +82,11 @@ typedef struct ph_obs {
 } ph_obs;
 
 typedef struct ph_config {
-    const char *data_dir;       /* game data (build/dat), only read; many games can share it */
+    const char *data_dir;       /* game data, only read; many games can share it (default: this build's build/dat) */
     const char *var_dir;        /* writable files (record, logfile, xlogfile, saves, bones): NULL gives each game a
                                    private directory removed by ph_end; set it to keep the record across games */
-    const char *options;        /* NetHack options, "name:Agent,role:Val,..." (NETHACKOPTIONS format) */
+    const char *options;        /* NetHack options, "name:Agent,role:Val,..." (NETHACKOPTIONS format); default: NLE's
+                                   options and character (name:Agent-mon-hum-neu-mal) */
     const char *options_file;   /* or a NetHack options file; used when options is NULL */
     const char *wizkit;         /* wizard-mode starting items, or NULL */
     int seeded;                 /* seeds below are used */
@@ -99,7 +100,7 @@ typedef struct ph_config {
     int skip_gamelogs;          /* no logfile or xlogfile appends */
 } ph_config;
 
-void ph_config_default(ph_config *cfg);
+void ph_config_default(ph_config *cfg); /* everything a game needs; then set what you want to change */
 
 ph_game *ph_start(ph_obs *obs, FILE *ttyrec, const ph_config *cfg); /* NULL on a bad config */
 ph_game *ph_step(ph_game *game, ph_obs *obs);

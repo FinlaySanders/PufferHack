@@ -84,10 +84,18 @@ remove_vardir(const char *dir)
     }
 }
 
+#ifndef PH_DATA_DIR
+#define PH_DATA_DIR "build/dat"
+#endif
+
 void
 ph_config_default(ph_config *cfg)
 {
     memset(cfg, 0, sizeof *cfg);
+    cfg->data_dir = PH_DATA_DIR;
+    cfg->options = "name:Agent-mon-hum-neu-mal,autopickup,color,disclose:+i +a +v +g +c +o,mention_walls,nobones,"
+                   "nocmdassist,nolegacy,nosparkle,pickup_burden:unencumbered,pickup_types:$?!/,runmode:teleport,showexp,"
+                   "showscore,time";
     cfg->spawn_monsters = 1;
 }
 
