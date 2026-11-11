@@ -3,7 +3,6 @@
 
 #define NLE_RL_STATUS_SIG 26 /* the status pipeline's previous evaluation, kept by the rl port (and checkpoints) */
 
-#define NLE_BZ2_TTYRECS
 
 #include <stdio.h>
 

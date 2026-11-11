@@ -44,7 +44,7 @@ P-core: save ~18 us, load ~61 us, ~300 KB per checkpoint (first calls are slower
 `src/nh_ckpt_layout.c` (pointer words, fields, copied slots) is generated from a `-g` build:
 
     NH_SRC=. NH_ONAMES=<build>/include/onames.h \
-        gdb -batch -ex 'set max-value-size unlimited' -ex 'source tools/gen_ckpt_layout.py' <build>/libpufferhack.so
+        gdb -batch -ex 'set max-value-size unlimited' -ex 'source util/gen_ckpt_layout.py' <build>/libpufferhack.so
 
 It static-asserts every field's offset and size, so a struct change without regeneration fails
 the build. A new lazy slot needs a policy: copy (add it to `SLOTS` in the generator) or keep.

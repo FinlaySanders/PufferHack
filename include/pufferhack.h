@@ -4,7 +4,6 @@
 /* PufferHack: NetHack 3.6.6 as stock NLE 0.9.0 plays it, many games per process. Plain C types only. */
 
 #include <stddef.h>
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,7 +101,7 @@ typedef struct ph_config {
 
 void ph_config_default(ph_config *cfg); /* everything a game needs; then set what you want to change */
 
-ph_game *ph_start(ph_obs *obs, FILE *ttyrec, const ph_config *cfg); /* NULL on a bad config */
+ph_game *ph_start(ph_obs *obs, const ph_config *cfg); /* NULL on a bad config */
 ph_game *ph_step(ph_game *game, ph_obs *obs);
 ph_game *ph_refresh(ph_game *game, ph_obs *obs);
 void ph_end(ph_game *game);

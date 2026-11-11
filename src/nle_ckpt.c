@@ -6,7 +6,7 @@
  * (offset), into the library (offset from its base), or into the heap (dropped; NetHack's restore
  * rebuilds those, and the options/window-port fields in keep_fields keep the target's own). So a
  * checkpoint loads into any env, in this process or another. Layout tables are generated into
- * nh_ckpt_layout.c by tools/gen_ckpt_layout.py. */
+ * nh_ckpt_layout.c by util/gen_ckpt_layout.py. */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -225,7 +225,7 @@ ckpt_enter(nle_ctx_t *nle)
     current_nle_ctx = nle;
     nh_cur = (struct nh_ctx *) nle->nh;
     if (nh_ckpt_ctx_size != sizeof(struct nh_ctx))
-        return 1; /* nh_ckpt_layout.c is stale: rerun tools/gen_ckpt_layout.py */
+        return 1; /* nh_ckpt_layout.c is stale: rerun util/gen_ckpt_layout.py */
     pthread_once(&once, ckpt_init);
     return 0;
 }

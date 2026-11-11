@@ -12,7 +12,7 @@ B = build
 S = stock/build
 SRC = $(S)/src/nle-0.9.0
 OPT = -O2 -g -march=x86-64-v3
-INC = -I$(ROOT)/include -I$(ROOT)/third_party/fcontext/include -Isrc
+INC = -I$(ROOT)/include -I$(ROOT)/src/third_party/fcontext/include -Isrc
 # the defines both engines are built with (the engine adds the pool and TLS model, NLE 0.9.0 seeding and tiles)
 NHDEFS = -DDEFAULT_WINDOW_SYS='"rl"' -DDLB -DGCC_WARN -DHACKDIR='"/nonexistent"' -DNOCLIPPING -DNOCWD_ASSUMPTIONS -DNOMAIL \
   -DNOTPARMDECL
@@ -57,7 +57,7 @@ poke:
 	@test -n "$(LIBDIR)" -a -n "$(POKE)" || { echo "make poke LIBDIR=DIR POKE=FILE"; exit 2; }
 	@mkdir -p $(dir $(POKE))
 	$(CC) -O1 -fPIC -shared -march=x86-64-v3 $(NHDEFS) -DNH_POOL_ALLOC -DNH_TLS_INITIAL_EXEC -I$(ROOT)/include -I$(LIBDIR)/include \
-	  -I$(ROOT)/third_party/libtmt -I$(ROOT)/third_party/fcontext/include -o $(POKE).tmp src/phv_poke.c -L$(LIBDIR) -lpufferhack \
+	  -I$(ROOT)/src/third_party/libtmt -I$(ROOT)/src/third_party/fcontext/include -o $(POKE).tmp src/phv_poke.c -L$(LIBDIR) -lpufferhack \
 	  -Wl,--no-undefined && mv $(POKE).tmp $(POKE)
 
 clean:

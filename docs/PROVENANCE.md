@@ -8,6 +8,6 @@
   development history is the `pufferhack-v0` branch of github.com/FinlaySanders/fast-nle (the engine speed work is on
   that repository's `lean-engine` branch).
 - **NetHack 3.7**: one fix, `attknum = 0` in `hitum_cleave` (3.6.6 reads it uninitialised).
-- **Vendored**: bzip2 1.0.8 (`third_party/bzip2`, bzip2 licence), fcontext from deboost.context (`third_party/fcontext`, MIT),
-  libtmt (`third_party/libtmt`, BSD-style). The parsers in `util/*_yacc.c`, `util/*_lex.c` were generated
-  with bison 3.8.2 and flex 2.6.4 from `util/lev_comp.y`, `util/lev_comp.l`, `util/dgn_comp.y`, `util/dgn_comp.l`.
+- **Vendored** (in `src/third_party`): fcontext from deboost.context (MIT), the coroutine switch each game runs on, and
+  libtmt (BSD-style), the terminal emulator behind `tty_chars`. The parsers in `util/*_yacc.c`, `util/*_lex.c` were
+  generated with bison 3.8.2 and flex 2.6.4 from `util/lev_comp.y`, `util/lev_comp.l`, `util/dgn_comp.y`, `util/dgn_comp.l`.

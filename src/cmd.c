@@ -77,7 +77,7 @@ struct nle_cmd_state {
     unsigned _randomkey_i;
     boolean _at_command; /* waiting for a command's first key: nothing of the game on the stack (checkpoints) */
 };
-_Static_assert(sizeof(struct nle_cmd_state) == 216, "nle_cmd_state is a checkpoint slot: rerun tools/gen_ckpt_layout.py");
+_Static_assert(sizeof(struct nle_cmd_state) == 216, "nle_cmd_state is a checkpoint slot: rerun util/gen_ckpt_layout.py");
 static struct nle_cmd_state *
 nle_cmd(void)
 {

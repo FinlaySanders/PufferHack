@@ -6,7 +6,7 @@
 #include "hack.h"
 
 /* fast-nle: every mutable global that used to be defined here now lives in
- * struct nh_ctx (see tools/globals.def; accessors generated into
+ * struct nh_ctx (accessors in
  * nh_ctx_gen.h). What remains below is:
  *   - genuinely constant data (unchanged from stock),
  *   - nh_tmpl_* templates: the original non-zero initializers, kept at

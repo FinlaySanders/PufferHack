@@ -179,7 +179,7 @@ typedef struct nle_globals {
     nle_obs *observation;
 
     /* fast-nle: this env's migrated game state (struct nh_ctx, generated
-     * from tools/globals.def). Opaque here to keep game headers out. */
+     * listed in decl.c). Opaque here to keep game headers out. */
     void *nh;
 
     boolean done;

@@ -26,17 +26,15 @@ LTOFLAGS = -flto=auto -fno-fat-lto-objects
 WARN = -Wno-deprecated-non-prototype -Wno-unused-variable
 DEFS = -DDEFAULT_WINDOW_SYS='"rl"' -DDLB -DGCC_WARN -DHACKDIR='"$(HACKDIR)"' -DNOCLIPPING -DNOCWD_ASSUMPTIONS -DNOMAIL \
   -DNOTPARMDECL
-INCS = -Iinclude -I$(BUILD)/include -Ithird_party/libtmt -Ithird_party/bzip2 -Ithird_party/fcontext/include
+INCS = -Iinclude -I$(BUILD)/include -Isrc/third_party/libtmt -Isrc/third_party/fcontext/include
 O = $(BUILD)/obj
 U = $(BUILD)/util
 GEN = $(BUILD)/include/gen.stamp
 
-LIBSRC = $(sort $(wildcard src/*.c) sys/share/posixregex.c sys/share/ioctl.c sys/unix/unixunix.c sys/unix/unixmain.c \
-  sys/unix/unixres.c $(wildcard win/tty/*.c) win/rl/winrl.cc)
+LIBSRC = $(sort $(wildcard src/*.c) $(wildcard win/tty/*.c) win/rl/winrl.cc)
 OBJS = $(patsubst %,$(O)/%.o,$(basename $(LIBSRC)))
-FCOBJS = $(addprefix $(O)/third_party/fcontext/,source/stack.o asm/make_x86_64_sysv_elf_gas.o asm/jump_x86_64_sysv_elf_gas.o)
-BZOBJS = $(patsubst %,$(O)/third_party/bzip2/%.o,blocksort bzlib compress crctable decompress huffman randtable)
-TPLIBS = $(O)/libfcontext.a $(O)/libbz2_static.a $(O)/libtmt.a
+FCOBJS = $(addprefix $(O)/src/third_party/fcontext/,source/stack.o asm/make_x86_64_sysv_elf_gas.o asm/jump_x86_64_sysv_elf_gas.o)
+TPLIBS = $(O)/libfcontext.a $(O)/libtmt.a
 
 SPECIAL = $(addsuffix .des,bigroom castle endgame gehennom knox medusa mines oracle sokoban tower yendor)
 QUEST = $(addsuffix .des,Arch Barb Caveman Healer Knight Monk Priest Ranger Rogue Samurai Tourist Valkyrie Wizard)
@@ -59,8 +57,7 @@ $(BUILD)/libpufferhack.so: $(OBJS) $(TPLIBS)
 
 # three archives in CMake's order: the same members and link as its build
 $(O)/libfcontext.a: $(FCOBJS)
-$(O)/libbz2_static.a: $(BZOBJS)
-$(O)/libtmt.a: $(O)/third_party/libtmt/tmt.o
+$(O)/libtmt.a: $(O)/src/third_party/libtmt/tmt.o
 $(TPLIBS):
 	rm -f $@ && $(AR) qc $@ $^
 
@@ -80,17 +77,17 @@ $(O)/%.o: %.cc | $(GEN)
 	$(CXX) $(DEFS) -DNH_POOL_ALLOC -DNH_TLS_INITIAL_EXEC $(INCS) $(CPPFLAGS) $(CXXFLAGS) -std=gnu++14 $(LTOFLAGS) -fPIC \
 	  $(WARN) -MMD -MP -c $< -o $@
 
-$(O)/third_party/%.o: third_party/%.c
+$(O)/src/third_party/%.o: src/third_party/%.c
 	@mkdir -p $(@D)
 	$(CC) $(TPDEFS) $(CFLAGS) $(TPSTD) $(LTOFLAGS) -fPIC $(WARN) -c $< -o $@
 
-$(O)/third_party/%.o: third_party/%.S
+$(O)/src/third_party/%.o: src/third_party/%.S
 	@mkdir -p $(@D)
 	$(CC) $(TPDEFS) -O3 -DNDEBUG -fPIC $(WARN) -c $< -o $@
 
-$(O)/third_party/bzip2/%.o $(O)/third_party/libtmt/%.o: TPDEFS = $(DEFS)
-$(O)/third_party/libtmt/%.o: TPSTD = -std=gnu11
-$(O)/third_party/fcontext/%.o: TPDEFS = -DBOOST_CONTEXT_EXPORT= -Ithird_party/fcontext/include/fcontext
+$(O)/src/third_party/libtmt/%.o: TPDEFS = $(DEFS)
+$(O)/src/third_party/libtmt/%.o: TPSTD = -std=gnu11
+$(O)/src/third_party/fcontext/%.o: TPDEFS = -DBOOST_CONTEXT_EXPORT= -Isrc/third_party/fcontext/include/fcontext
 
 # host tools; gc-sections drops nh_ctx_gen.c's unused reference into mon.c (CMake needs LTO for that)
 TOOLCC = $(HOSTCC) $(HOSTCFLAGS) $(DEFS) -Iinclude -I$(BUILD)/include $(WARN) -ffunction-sections -Wl,--gc-sections
@@ -145,27 +142,27 @@ test: all
 	ls -d /dev/shm/pufferhack-* /tmp/pufferhack-* 2>/dev/null | sort | comm -13 $(BUILD)/test/vardirs.before - | \
 	  { ! grep . || { echo "FAIL: a private game directory was left behind"; exit 1; }; }
 	printf 'OPTIONS=name:Agent,role:Val,race:human,gender:female,align:neutral,nosuchoption\n' > $(BUILD)/test/badrc
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/badoptions tests/badoptions.c -L$(BUILD) -lpufferhack \
+	$(CC) -O1 -Iinclude -Isrc/third_party/fcontext/include -Itests -o $(BUILD)/test/badoptions tests/badoptions.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/badoptions $(BUILD)/test/hack $(BUILD)/test/badrc
-	$(CC) -O1 -Wno-format-truncation -Iinclude -Ithird_party/fcontext/include -Iverify/src -o $(BUILD)/test/teardown \
+	$(CC) -O1 -Wno-format-truncation -Iinclude -Isrc/third_party/fcontext/include -Iverify/src -o $(BUILD)/test/teardown \
 	  tests/teardown.c -L$(BUILD) -lpufferhack -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/teardown $(abspath $(BUILD))/dat $(abspath $(BUILD))/test tests/teardown.keys
 	$(CC) $(DEFS) $(INCS) -O1 $(WARN) -o $(BUILD)/test/rndargs tests/rndargs.c src/rnd.c src/isaac64.c
 	$(BUILD)/test/rndargs
 	cp -r $(BUILD)/dat $(BUILD)/test/hackB
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/caches tests/caches.c -L$(BUILD) -lpufferhack \
+	$(CC) -O1 -Iinclude -Isrc/third_party/fcontext/include -Itests -o $(BUILD)/test/caches tests/caches.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/caches $(BUILD)/test/hack $(BUILD)/test/hackB $(BUILD)/test
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/latebind tests/latebind.c -L$(BUILD) -lpufferhack \
+	$(CC) -O1 -Iinclude -Isrc/third_party/fcontext/include -Itests -o $(BUILD)/test/latebind tests/latebind.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/latebind $(BUILD)/test/hack
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckptopts tests/ckptopts.c -L$(BUILD) -lpufferhack \
+	$(CC) -O1 -Iinclude -Isrc/third_party/fcontext/include -Itests -o $(BUILD)/test/ckptopts tests/ckptopts.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/ckptopts $(BUILD)/test/hack
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_save tests/ckpt_save.c -L$(BUILD) -lpufferhack \
+	$(CC) -O1 -Iinclude -Isrc/third_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_save tests/ckpt_save.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/ckpt_save $(BUILD)/test/hack
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_history tests/ckpt_history.c -L$(BUILD) -lpufferhack \
+	$(CC) -O1 -Iinclude -Isrc/third_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_history tests/ckpt_history.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/ckpt_history $(BUILD)/test/hack

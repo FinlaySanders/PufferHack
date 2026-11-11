@@ -111,7 +111,7 @@ copy(char *dst, size_t cap, const char *src)
 }
 
 ph_game *
-ph_start(ph_obs *obs, FILE *ttyrec, const ph_config *cfg)
+ph_start(ph_obs *obs, const ph_config *cfg)
 {
     nle_settings *s = (nle_settings *) calloc(1, sizeof *s);
     nle_ctx_t *g = 0;
@@ -137,7 +137,7 @@ ph_start(ph_obs *obs, FILE *ttyrec, const ph_config *cfg)
         s->underfoot_glyphs = cfg->underfoot_glyphs;
         s->true_glyphs = cfg->true_glyphs != 0;
         s->skip_gamelogs = cfg->skip_gamelogs != 0;
-        g = nle_start((nle_obs *) obs, ttyrec, s);
+        g = nle_start((nle_obs *) obs, NULL, s);
     }
     if (!g && s->vardir_owned)
         remove_vardir(s->vardir);

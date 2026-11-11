@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     obs.message = msg;
     long turns[2];
     for (int game = 0; game < 2; game++) {
-        ph_game *g = ph_start(&obs, NULL, &cfg);
+        ph_game *g = ph_start(&obs, &cfg);
         if (!g)
             return fprintf(stderr, "ph_start failed\n"), 1;
         const char keys[] = "hjklyubn\r\033";
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
         ph_end(g);
     }
     /* a game that ends writes its record and log lines: into its private directory, not the data directory */
-    ph_game *g = ph_start(&obs, NULL, &cfg);
+    ph_game *g = ph_start(&obs, &cfg);
     const char quit[] = "\033#quit\ry";
     for (int i = 0; quit[i] && !obs.done; i++) {
         obs.action = quit[i];

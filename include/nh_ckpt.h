@@ -1,4 +1,4 @@
-/* checkpoint layout tables, generated into src/nh_ckpt_layout.c by tools/gen_ckpt_layout.py */
+/* checkpoint layout tables, generated into src/nh_ckpt_layout.c by util/gen_ckpt_layout.py */
 #ifndef NH_CKPT_H
 #define NH_CKPT_H
 
