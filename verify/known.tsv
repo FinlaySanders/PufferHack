@@ -1,0 +1,19 @@
+# Known differences from stock: mode, game, class, and the exact verdict line certify.sh accepts for that game in that mode
+# (any other line for it fails the run; an identical game is noted). The classes, from the reach audit:
+#   D4  stock use-after-free: weffects calls learnwand(obj) after the zap's lightning destroyed the wand (Moloch's high priestess,
+#       a wand of death); stock reads its freed wand, the engine's pool has reused the slot. Default mode only: with every buffer
+#       bound stock's heap differs and it plays as the engine does
+#   D5  stock NLE 0.9.0's own game depends on status_updates (a levitating hero wriggling out of a bear trap): default mode
+#       compares the log's !status_updates game on the engine with stock's status_updates game, so it differs by construction;
+#       identical in bind-all mode, where both sides keep the log's options
+#   D6  impossible("shopkeeper career change?") after leaving a Minetown shop by ^V prints mnum through a stale
+#       rooms[].resident that points at a monster freed by savelev: stock reads 0 from the freed chunk, the engine's monster
+#       pool keeps 267; the message differs, the state is identical
+# mode	game	class	verdict line
+default	keys_reach/l_minetn_00_fz2	D6	DIVERGE first at key 403 of 3033: msg@403 (fork 3034 lines, stock 3034, log 3033 keys) | STATE_DIVERGE first at key 403: obs.msg@403
+default	keys_reach/m_bare_35_fz	D5	DIVERGE first at key 1688 of 1802: core@1688, xyt@1688, msg@1689 (fork 1803 lines, stock 1803, log 1802 keys) | STATE_DIVERGE first at key 1688: cell@1688 mon@1688 obs.bl@1688 obs.in@1688 u@1688 obs.msg@1689
+default	keys_reach_r1/l_minetn_00_fz2	D6	DIVERGE first at key 403 of 3033: msg@403 (fork 3034 lines, stock 3034, log 3033 keys) | STATE_DIVERGE first at key 403: obs.msg@403
+default	keys_reach_r1/m_bare_35_fz	D5	DIVERGE first at key 1688 of 1802: core@1688, xyt@1688, msg@1689 (fork 1803 lines, stock 1803, log 1802 keys) | STATE_DIVERGE first at key 1688: cell@1688 mon@1688 obs.bl@1688 obs.in@1688 u@1688 obs.msg@1689
+default	keys_reach_r1/x_invoke_3_fz	D4	DIVERGE first at key 302 of 526: core@302, xyt@308, msg@324, done@525, length@526 (fork 1939 lines, stock 527, log 1938 keys) | STATE_DIVERGE first at key 302: attr@302 floor@302 mon@302 obs.bl@302 oc@302 u@302 cell@308 obs.in@308 prop@308 inv@320 obs.gl@323 ctx@324 obs.msg@324 light@325 mv@325 obs.mi@325 migr@329 engr@339 lflags@339 linfo@339 room@339 timer@339 trap@339 vis@339 obs.ig@345 obs.il@345 obs.io@345 skill@355 length@526
+bind-all	keys_reach/l_minetn_00_fz2	D6	DIVERGE first at key 403 of 3033: msg@403 (fork 3034 lines, stock 3034, log 3033 keys) | STATE_DIVERGE first at key 403: obs.msg@403 obs.tc@403 obs.tk@403 obs.tu@403
+bind-all	keys_reach_r1/l_minetn_00_fz2	D6	DIVERGE first at key 403 of 3033: msg@403 (fork 3034 lines, stock 3034, log 3033 keys) | STATE_DIVERGE first at key 403: obs.msg@403 obs.tc@403 obs.tk@403 obs.tu@403

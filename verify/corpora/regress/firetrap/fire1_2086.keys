@@ -1,0 +1,41 @@
+S 826 9e3779b97f4a7433 0 1 0 0
+T 1 826 1
+M 1 1
+B 1000110110110000111
+G 1
+O @rc
+R OPTIONS=name:Agent,pettype:none,role:Samurai,race:human,gender:male,align:lawful,autopickup,color,disclose:-i -a -v -g -c -o,!tombstone,mention_walls,nobones,nocmdassist,nolegacy,nosparkle,pickup_burden:unencumbered,pickup_types:$?!/,runmode:teleport,showexp,showscore,time,!status_updates,playmode:debug
+H /dev/shm/b11drv/fire1_2086
+K
+104
+23
+102
+105
+114
+101
+32
+116
+114
+97
+112
+13
+7
+118
+97
+109
+112
+105
+114
+101
+13
+104
+115
+115
+13
+13
+115
+115
+115
+13
+13
+E end

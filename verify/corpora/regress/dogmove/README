@@ -1,0 +1,3 @@
+# dogmove (R-dog)
+
+- `g050511_78b84175f8477096.keys` (keys_trainer3 g050511, 10,199 logged keys, 7,425 played; a confused tame purple worm engulfs the hero during its own dog_move and then moves): default and bind-all modes. Expected on 9f5c02281: DIVERGE in both (STATE_DIVERGE at key 5930 `cell` 15,9 m=0 vs stock's m=829, core RNG at 6015). Expected after the fix: IDENTICAL, in default and bind-all modes, and with the old harness's checkpoint transplant every 3, 10 or 97 keys (CKPT_EVERY with fork_replay_st, stock side src/stock_replay_st_je on ref/libnethack_stock37_gcc.so; STATE_IDENTICAL keys 7425; before the checkpoint change a transplant dropped the stale cell: `cell` from the first load).

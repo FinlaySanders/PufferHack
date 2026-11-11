@@ -1,0 +1,44 @@
+S db113b01d80d0ee8 452642b8a74772fd 0 1 0 0
+T 1 3b01d80d0ee8 1
+M 1 1
+B 1000110110110000111
+G 1
+O @rc
+R OPTIONS=name:Agent,role:Val,race:human,align:lawful,gender:female,autopickup,color,disclose:-i -a -v -g -c -o,!tombstone,mention_walls,nobones,nocmdassist,nolegacy,nosparkle,pickup_burden:unencumbered,pickup_types:$?!/,runmode:teleport,showexp,showscore,time,!status_updates,playmode:debug
+H /dev/shm/gap4_gen/3475856
+K
+13
+110
+121
+98
+106
+117
+115
+23
+101
+109
+112
+116
+121
+32
+116
+105
+110
+13
+121
+106
+106
+106
+101
+101
+13
+13
+13
+13
+110
+108
+108
+104
+106
+107
+E end

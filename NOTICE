@@ -1,0 +1,11 @@
+PufferHack
+Copyright (c) the PufferHack contributors.
+
+NetHack 3.6.6, Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985; NetHack may be freely redistributed.
+See LICENSE (the NetHack General Public License).
+
+NetHack Learning Environment (NLE), Copyright (c) Facebook, Inc. and its affiliates, and the NetHack-LE contributors.
+
+bzip2, Copyright (C) 1996-2019 Julian R Seward and contributors; see third_party/bzip2/LICENSE.
+fcontext (deboost.context), Copyright (c) 2016 Sepehr Taghdisian; MIT licence, see third_party/fcontext/LICENSE.
+libtmt, Copyright (c) 2017 Rob King; BSD-style licence, see third_party/libtmt/README.rst.

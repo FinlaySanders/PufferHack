@@ -1,0 +1,161 @@
+--- phv.c
++++ phv_pre.c
+@@ -65,6 +65,29 @@
+         r->slines++;
+     }
+ }
++/* phv_pre (lane badoptions): until a game first shows a normal frame (in_normal_game) no hero exists, and a state digest would
++   read youmonst.data (ACURR): the digest line, every bound observation buffer hashed raw (internal 9 ints with [6] zeroed,
++   misc 3 ints, as the digest), no sections */
++static void pre_obs(uint64_t *v, const void *const *ob)
++{
++    static const size_t sz[PHD_NOBS] = PHD_OBS_SIZES;
++    for (int k = 0; k < PHD_NSEC; k++)
++        v[PHD_SEC0 + k] = 0;
++    for (int j = 0; j < PHD_NOBS; j++) {
++        if (!ob[j]) {
++            v[PHD_OBS0 + j] = PHD_UNBOUND;
++            continue;
++        }
++        unsigned char buf[55 * 80];
++        memcpy(buf, ob[j], sz[j]);
++        if (j == 7)
++            memset(buf + 6 * 4, 0, 4);
++        uint64_t h = 0xcbf29ce484222325ULL;
++        for (size_t i = 0; i < sz[j]; i++)
++            h = (h ^ buf[i]) * 0x100000001b3ULL;
++        v[PHD_OBS0 + j] = h ^ 0x7072656f6273ULL;
++    }
++}
+ static uint64_t keycomp(int i, int key)
+ {
+     return (uint64_t) (uint32_t) i << 32 | (uint32_t) key;
+@@ -120,21 +143,28 @@
+ 
+ static int write_rc(const char *rc, int stock_status_updates, char *opt, size_t n)
+ {
+-    char p[4200];
+-    snprintf(p, sizeof p, "%s/nhrc", g_wd);
+-    FILE *r = fopen(p, "w");
+-    if (!r)
+-        return -1;
++    /* phv_pre: named by its content (/dev/shm/phvrc/FNV.nhrc, written whole then renamed), so an options error prints the same
++       file name on both sides when they read the same bytes */
++    static char rc2[sizeof K.rc];
++    char p[4200], t[4300];
++    snprintf(rc2, sizeof rc2, "%s", rc);
+     if (stock_status_updates) { /* stock fills blstats only through the status pipeline */
+-        static char rc2[sizeof K.rc];
+         char *q;
+-        snprintf(rc2, sizeof rc2, "%s", rc);
+         while ((q = strstr(rc2, "!status_updates")))
+             memmove(q, q + 1, strlen(q));
+-        fputs(rc2, r);
+-    } else
+-        fputs(rc, r);
+-    fclose(r);
++    }
++    uint64_t h = 0xcbf29ce484222325ULL;
++    for (const char *c = rc2; *c; c++)
++        h = (h ^ (unsigned char) *c) * 0x100000001b3ULL;
++    mkdir("/dev/shm/phvrc", 0755);
++    snprintf(p, sizeof p, "/dev/shm/phvrc/%016llx.nhrc", (unsigned long long) h);
++    snprintf(t, sizeof t, "%s.%d", p, (int) getpid());
++    FILE *r = fopen(t, "w");
++    if (!r)
++        return -1;
++    fputs(rc2, r);
++    if (fclose(r) != 0 || rename(t, p) != 0)
++        return -1;
+     snprintf(opt, n, "@%s", p);
+     return 0;
+ }
+@@ -337,7 +367,13 @@
+         memset(f_ws, 0, f_wsz());
+     nle_ctx_t *c = f_start(&FO, NULL, &s);
+     uint64_t a = __rdtsc();
+-    f_dig(c, &FO, PHD_STATE, f_ws, (unsigned long long *) v);
++    const void *fob[PHD_NOBS] = { FO.glyphs, FO.chars, FO.colors, FO.specials, FO.blstats, FO.message, FO.prog_state, FO.internal,
++                                  FO.inv_glyphs, FO.inv_strs, FO.inv_letters, FO.inv_oclasses, FO.tty_chars, FO.tty_colors,
++                                  FO.tty_cursor, FO.misc };
++    int pre = !FO.in_normal_game && !FO.done;
++    f_dig(c, &FO, pre ? 0 : PHD_STATE, f_ws, (unsigned long long *) v);
++    if (pre)
++        pre_obs(v, fob);
+     r->tsc_dig += __rdtsc() - a;
+     v[PHD_KEY] = keycomp(-1, -1);
+     fault_apply(-1, v);
+@@ -348,7 +384,7 @@
+         if (write(pkfd, &pk, sizeof pk) != sizeof pk)
+             return -1;
+     }
+-    if (text_at == -1 && tf)
++    if (text_at == -1 && tf && !pre)
+         f_txt(c, &FO, tf);
+     for (int i = 0; i < K.nkeys && !FO.done; i++) {
+         FO.action = K.keys[i];
+@@ -358,7 +394,11 @@
+         if (npoke)
+             poke_apply(c, i, r);
+         int st = !FO.done;
+-        f_dig(c, &FO, st ? PHD_STATE : 0, f_ws, (unsigned long long *) v);
++        if (pre && (FO.in_normal_game || FO.done))
++            pre = 0;
++        f_dig(c, &FO, st && !pre ? PHD_STATE : 0, f_ws, (unsigned long long *) v);
++        if (st && pre)
++            pre_obs(v, fob);
+         r->tsc_step += m - a;
+         r->tsc_dig += __rdtsc() - m;
+         v[PHD_KEY] = keycomp(i, K.keys[i]);
+@@ -370,7 +410,7 @@
+             if (write(pkfd, &pk, sizeof pk) != sizeof pk)
+                 return -1;
+         }
+-        if (text_at == i && tf)
++        if (text_at == i && tf && !pre)
+             f_txt(c, &FO, tf), fflush(tf);
+     }
+     r->ns = now_ns() - t0;
+@@ -655,7 +695,10 @@
+     void *c = s_start(&o, NULL, &sd, &s);
+     in.done = o.done, in.in_normal_game = o.in_normal_game;
+     uint64_t a = __rdtsc();
+-    s_dig(&in, PHD_STATE, (unsigned long long *) v);
++    int pre = !o.in_normal_game && !o.done;
++    s_dig(&in, pre ? 0 : PHD_STATE, (unsigned long long *) v);
++    if (pre)
++        pre_obs(v, ob);
+     r->tsc_dig += __rdtsc() - a;
+     v[PHD_KEY] = keycomp(-1, -1);
+     fold(r, v, 1);
+@@ -665,7 +708,7 @@
+         if (write(pkfd, &pk, sizeof pk) != sizeof pk)
+             return -1;
+     }
+-    if (text_at == -1 && tf)
++    if (text_at == -1 && tf && !pre)
+         s_txt(&in, tf), fflush(tf);
+     for (int i = 0; i < K.nkeys && !o.done; i++) {
+         o.action = K.keys[i];
+@@ -674,7 +717,11 @@
+         uint64_t m = __rdtsc();
+         int st = !o.done;
+         in.done = o.done, in.in_normal_game = o.in_normal_game;
+-        s_dig(&in, st ? PHD_STATE : 0, (unsigned long long *) v);
++        if (pre && (o.in_normal_game || o.done))
++            pre = 0;
++        s_dig(&in, st && !pre ? PHD_STATE : 0, (unsigned long long *) v);
++        if (st && pre)
++            pre_obs(v, ob);
+         r->tsc_step += m - a;
+         r->tsc_dig += __rdtsc() - m;
+         v[PHD_KEY] = keycomp(i, K.keys[i]);
+@@ -685,7 +732,7 @@
+             if (write(pkfd, &pk, sizeof pk) != sizeof pk)
+                 return -1;
+         }
+-        if (text_at == i && tf)
++        if (text_at == i && tf && !pre)
+             s_txt(&in, tf), fflush(tf);
+     }
+     r->ns = now_ns() - t0;

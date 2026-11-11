@@ -1,0 +1,19 @@
+# games of the verify corpora that the stock reference (stock/build.sh) ends with a nonzero exit (a stock panic or crash), with
+# the signal and the last key stock completes; certify.sh counts each as "aborted-both" when the engine equals stock on every line
+# stock wrote, and fails a run whose aborted set differs from this list. The ci six were found by the PufferHack (j) rebaseline
+# (the phase-0 census saw the same six on the pip-recipe build, at both stack sizes), the reach nine by the reach audit
+keys_champ/g000558_9202104394abb1ef	SIGABRT	906	panic "obj_is_local" in nle_end's freedynamicdata after the log's last key (the fork's teardown segfaults)
+keys_cov/s24_0045	SIGSEGV	1811	segfault in find_mac from experience() in xkilled (the fork plays on)
+keys_cov/s27_0039	SIGABRT	560	wizard-mode panic: level number out of range [ledger_to_dnum(-1)] in migrate_to_level from mlevel_tele_trap (the fork panics too)
+keys_cov2/s31_0022	SIGABRT	377	the same panic
+keys_cov2/s36_0038	SIGABRT	1033	the same panic
+keys_cov4/s52_0038	SIGABRT	496	the same panic
+keys_reach/q_full_Arc_neu_3_fz	SIGABRT	955	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach/q_full_Bar_cha_1_fz2	SIGABRT	2254	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach/q_full_Bar_cha_4_fz2	SIGABRT	2804	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach/q_full_Bar_cha_5_fz2	SIGABRT	1738	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach/q_full_Rog_cha_5_fz2	SIGABRT	543	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach/q_home_ok_Wiz_neu_fz	SIGABRT	271	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach/q_lfight_Pri_cha_fz	SIGABRT	322	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach_r1/q_full_Cav_law_1_fz2	SIGABRT	519	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)
+keys_reach_r1/q_home_ok_Bar_cha_fz2	SIGABRT	266	panic "goto_level: no corresponding portal!": the hero, expelled from the quest with the portal sealed, steps on the dungeon-side portal that deferred_goto left (the engine panics too)

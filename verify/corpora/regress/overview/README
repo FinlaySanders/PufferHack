@@ -1,0 +1,1 @@
+End-of-game overview after a death outside the dungeon (gap 6, G1): f101_0005_ovy bind-all (the overview is visible only in tty_chars; v0.1 differs at key 739), f101_0005_ov default and bind-all (life-saved control); expected IDENTICAL.

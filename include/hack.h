@@ -1,0 +1,812 @@
+/* NetHack 3.6	hack.h	$NHDT-Date: 1561019041 2019/06/20 08:24:01 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.106 $ */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Pasi Kallinen, 2017. */
+/* NetHack may be freely redistributed.  See license for details. */
+
+#ifndef HACK_H
+#define HACK_H
+#include <stdint.h>
+#include "movement_facts.h"
+
+#ifndef CONFIG_H
+#include "config.h"
+#endif
+#include "lint.h"
+
+#define TELL 1
+#define NOTELL 0
+#define ON 1
+#define OFF 0
+#define BOLT_LIM 8        /* from this distance ranged attacks will be made */
+#define MAX_CARR_CAP 1000 /* so that boulders can be heavier */
+#define DUMMY { 0 }       /* array initializer, letting [1..N-1] default */
+
+/* symbolic names for capacity levels */
+enum encumbrance_types {
+    UNENCUMBERED = 0,
+    SLT_ENCUMBER = 1, /* Burdened */
+    MOD_ENCUMBER = 2, /* Stressed */
+    HVY_ENCUMBER = 3, /* Strained */
+    EXT_ENCUMBER = 4, /* Overtaxed */
+    OVERLOADED   = 5  /* Overloaded */
+};
+
+/* weight increment of heavy iron ball */
+#define IRON_BALL_W_INCR 160
+
+/* number of turns it takes for vault guard to show up */
+#define VAULT_GUARD_TIME 30
+
+#define SHOP_DOOR_COST 400L /* cost of a destroyed shop door */
+#define SHOP_BARS_COST 300L /* cost of iron bars */
+#define SHOP_HOLE_COST 200L /* cost of making hole/trapdoor */
+#define SHOP_WALL_COST 200L /* cost of destroying a wall */
+#define SHOP_WALL_DMG  (10L * ACURRSTR) /* damaging a wall */
+
+/* hunger states - see hu_stat in eat.c */
+enum hunger_state_types {
+    SATIATED   = 0,
+    NOT_HUNGRY = 1,
+    HUNGRY     = 2,
+    WEAK       = 3,
+    FAINTING   = 4,
+    FAINTED    = 5,
+    STARVED    = 6
+};
+
+/* Macros for how a rumor was delivered in outrumor() */
+#define BY_ORACLE 0
+#define BY_COOKIE 1
+#define BY_PAPER 2
+#define BY_OTHER 9
+
+/* Macros for why you are no longer riding */
+enum dismount_types {
+    DISMOUNT_GENERIC  = 0,
+    DISMOUNT_FELL     = 1,
+    DISMOUNT_THROWN   = 2,
+    DISMOUNT_POLY     = 3,
+    DISMOUNT_ENGULFED = 4,
+    DISMOUNT_BONES    = 5,
+    DISMOUNT_BYCHOICE = 6
+};
+
+/* mgflags for mapglyph() */
+#define MG_FLAG_NORMAL     0x00
+#define MG_FLAG_NOOVERRIDE 0x01
+
+/* Special returns from mapglyph() */
+#define MG_CORPSE  0x01
+#define MG_INVIS   0x02
+#define MG_DETECT  0x04
+#define MG_PET     0x08
+#define MG_RIDDEN  0x10
+#define MG_STATUE  0x20
+#define MG_OBJPILE 0x40  /* more than one stack of objects */
+#define MG_BW_LAVA 0x80  /* 'black & white lava': highlight lava if it
+                            can't be distringuished from water by color */
+
+/* sellobj_state() states */
+#define SELL_NORMAL (0)
+#define SELL_DELIBERATE (1)
+#define SELL_DONTSELL (2)
+
+/* alteration types--keep in synch with costly_alteration(mkobj.c) */
+enum cost_alteration_types {
+    COST_CANCEL  =  0, /* standard cancellation */
+    COST_DRAIN   =  1, /* drain life upon an object */
+    COST_UNCHRG  =  2, /* cursed charging */
+    COST_UNBLSS  =  3, /* unbless (devalues holy water) */
+    COST_UNCURS  =  4, /* uncurse (devalues unholy water) */
+    COST_DECHNT  =  5, /* disenchant weapons or armor */
+    COST_DEGRD   =  6, /* removal of rustproofing, dulling via engraving */
+    COST_DILUTE  =  7, /* potion dilution */
+    COST_ERASE   =  8, /* scroll or spellbook blanking */
+    COST_BURN    =  9, /* dipped into flaming oil */
+    COST_NUTRLZ  = 10, /* neutralized via unicorn horn */
+    COST_DSTROY  = 11, /* wand breaking (bill first, useup later) */
+    COST_SPLAT   = 12, /* cream pie to own face (ditto) */
+    COST_BITE    = 13, /* start eating food */
+    COST_OPEN    = 14, /* open tin */
+    COST_BRKLCK  = 15, /* break box/chest's lock */
+    COST_RUST    = 16, /* rust damage */
+    COST_ROT     = 17, /* rotting attack */
+    COST_CORRODE = 18 /* acid damage */
+};
+
+/* bitmask flags for corpse_xname();
+   PFX_THE takes precedence over ARTICLE, NO_PFX takes precedence over both */
+#define CXN_NORMAL 0    /* no special handling */
+#define CXN_SINGULAR 1  /* override quantity if greather than 1 */
+#define CXN_NO_PFX 2    /* suppress "the" from "the Unique Monst */
+#define CXN_PFX_THE 4   /* prefix with "the " (unless pname) */
+#define CXN_ARTICLE 8   /* include a/an/the prefix */
+#define CXN_NOCORPSE 16 /* suppress " corpse" suffix */
+
+/* getpos() return values */
+enum getpos_retval {
+    LOOK_TRADITIONAL = 0, /* '.' -- ask about "more info?" */
+    LOOK_QUICK       = 1, /* ',' -- skip "more info?" */
+    LOOK_ONCE        = 2, /* ';' -- skip and stop looping */
+    LOOK_VERBOSE     = 3  /* ':' -- show more info w/o asking */
+};
+
+/*
+ * This is the way the game ends.  If these are rearranged, the arrays
+ * in end.c and topten.c will need to be changed.  Some parts of the
+ * code assume that PANIC separates the deaths from the non-deaths.
+ */
+enum game_end_types {
+    DIED         =  0,
+    CHOKING      =  1,
+    POISONING    =  2,
+    STARVING     =  3,
+    DROWNING     =  4,
+    BURNING      =  5,
+    DISSOLVED    =  6,
+    CRUSHING     =  7,
+    STONING      =  8,
+    TURNED_SLIME =  9,
+    GENOCIDED    = 10,
+    PANICKED     = 11,
+    TRICKED      = 12,
+    QUIT         = 13,
+    ESCAPED      = 14,
+    ASCENDED     = 15
+};
+
+typedef struct strbuf {
+    int    len;
+    char * str;
+    char   buf[256];
+} strbuf_t;
+
+#include "align.h"
+#include "dungeon.h"
+#include "monsym.h"
+#include "mkroom.h"
+#include "objclass.h"
+#include "youprop.h"
+#include "wintype.h"
+#include "context.h"
+#include "decl.h"
+#include "timeout.h"
+
+NEARDATA extern coord bhitpos; /* place where throw or zap hits or stops */
+
+/* types of calls to bhit() */
+enum bhit_call_types {
+    ZAPPED_WAND   = 0,
+    THROWN_WEAPON = 1,
+    THROWN_TETHERED_WEAPON = 2,
+    KICKED_WEAPON = 3,
+    FLASHED_LIGHT = 4,
+    INVIS_BEAM    = 5
+};
+
+/* attack mode for hmon() */
+enum hmon_atkmode_types {
+    HMON_MELEE   = 0, /* hand-to-hand */
+    HMON_THROWN  = 1, /* normal ranged (or spitting while poly'd) */
+    HMON_KICKED  = 2, /* alternate ranged */
+    HMON_APPLIED = 3, /* polearm, treated as ranged */
+    HMON_DRAGGED = 4  /* attached iron ball, pulled into mon */
+};
+
+/* sortloot() return type; needed before extern.h */
+struct sortloot_item {
+    struct obj *obj;
+    char *str; /* result of loot_xname(obj) in some cases, otherwise null */
+    int indx; /* signed int, because sortloot()'s qsort comparison routine
+                 assumes (a->indx - b->indx) might yield a negative result */
+    xchar orderclass; /* order rather than object class; 0 => not yet init'd */
+    xchar subclass; /* subclass for some classes */
+    xchar disco; /* discovery status */
+};
+typedef struct sortloot_item Loot;
+
+#define MATCH_WARN_OF_MON(mon)                                               \
+    (Warn_of_mon && ((context.warntype.obj                                   \
+                      && (context.warntype.obj & (mon)->data->mflags2))      \
+                     || (context.warntype.polyd                              \
+                         && (context.warntype.polyd & (mon)->data->mflags2)) \
+                     || (context.warntype.species                            \
+                         && (context.warntype.species == (mon)->data))))
+
+#include "trap.h"
+#include "flag.h"
+#include "rm.h"
+#include "vision.h"
+#include "display.h"
+#include "engrave.h"
+#include "rect.h"
+#include "region.h"
+
+/* Symbol offsets */
+#define SYM_OFF_P (0)
+#define SYM_OFF_O (SYM_OFF_P + MAXPCHARS)
+#define SYM_OFF_M (SYM_OFF_O + MAXOCLASSES)
+#define SYM_OFF_W (SYM_OFF_M + MAXMCLASSES)
+#define SYM_OFF_X (SYM_OFF_W + WARNCOUNT)
+#define SYM_MAX (SYM_OFF_X + MAXOTHER)
+
+#ifdef USE_TRAMPOLI /* this doesn't belong here, but we have little choice */
+#undef NDECL
+#define NDECL(f) f()
+#endif
+
+#include "extern.h"
+#include "winprocs.h"
+#include "sys.h"
+
+#ifdef USE_TRAMPOLI
+#include "wintty.h"
+#undef WINTTY_H
+#include "trampoli.h"
+#undef EXTERN_H
+#include "extern.h"
+#endif /* USE_TRAMPOLI */
+
+/* flags to control makemon(); goodpos() uses some plus has some of its own */
+#define NO_MM_FLAGS 0x00000 /* use this rather than plain 0 */
+#define NO_MINVENT  0x00001 /* suppress minvent when creating mon */
+#define MM_NOWAIT   0x00002 /* don't set STRAT_WAITMASK flags */
+#define MM_NOCOUNTBIRTH 0x00004 /* don't increment born count (for revival) */
+#define MM_IGNOREWATER  0x00008 /* ignore water when positioning */
+#define MM_ADJACENTOK   0x00010 /* acceptable to use adjacent coordinates */
+#define MM_ANGRY    0x00020 /* monster is created angry */
+#define MM_NONAME   0x00040 /* monster is not christened */
+#define MM_EGD      0x00100 /* add egd structure */
+#define MM_EPRI     0x00200 /* add epri structure */
+#define MM_ESHK     0x00400 /* add eshk structure */
+#define MM_EMIN     0x00800 /* add emin structure */
+#define MM_EDOG     0x01000 /* add edog structure */
+#define MM_ASLEEP   0x02000 /* monsters should be generated asleep */
+#define MM_NOGRP    0x04000 /* suppress creation of monster groups */
+/* if more MM_ flag masks are added, skip or renumber the GP_ one(s) */
+#define GP_ALLOW_XY 0x08000 /* [actually used by enexto() to decide whether
+                             * to make an extra call to goodpos()]          */
+
+/* flags for make_corpse() and mkcorpstat() */
+#define CORPSTAT_NONE 0x00
+#define CORPSTAT_INIT 0x01   /* pass init flag to mkcorpstat */
+#define CORPSTAT_BURIED 0x02 /* bury the corpse or statue */
+
+/* flags for decide_to_shift() */
+#define SHIFT_SEENMSG 0x01 /* put out a message if in sight */
+#define SHIFT_MSG 0x02     /* always put out a message */
+
+/* flags for deliver_obj_to_mon */
+#define DF_NONE     0x00
+#define DF_RANDOM   0x01
+#define DF_ALL      0x04
+
+/* special mhpmax value when loading bones monster to flag as extinct or
+ * genocided */
+#define DEFUNCT_MONSTER (-100)
+
+/* macro form of adjustments of physical damage based on Half_physical_damage.
+ * Can be used on-the-fly with the 1st parameter to losehp() if you don't
+ * need to retain the dmg value beyond that call scope.
+ * Take care to ensure it doesn't get used more than once in other instances.
+ */
+#define Maybe_Half_Phys(dmg) \
+    ((Half_physical_damage) ? (((dmg) + 1) / 2) : (dmg))
+
+/* flags for special ggetobj status returns */
+#define ALL_FINISHED 0x01 /* called routine already finished the job */
+
+/* flags to control query_objlist() */
+#define BY_NEXTHERE     0x01   /* follow objlist by nexthere field */
+#define AUTOSELECT_SINGLE 0x02 /* if only 1 object, don't ask */
+#define USE_INVLET      0x04   /* use object's invlet */
+#define INVORDER_SORT   0x08   /* sort objects by packorder */
+#define SIGNAL_NOMENU   0x10   /* return -1 rather than 0 if none allowed */
+#define SIGNAL_ESCAPE   0x20   /* return -2 rather than 0 for ESC */
+#define FEEL_COCKATRICE 0x40   /* engage cockatrice checks and react */
+#define INCLUDE_HERO    0x80   /* show hero among engulfer's inventory */
+
+/* Flags to control query_category() */
+/* BY_NEXTHERE used by query_category() too, so skip 0x01 */
+#define UNPAID_TYPES 0x002
+#define GOLD_TYPES   0x004
+#define WORN_TYPES   0x008
+#define ALL_TYPES    0x010
+#define BILLED_TYPES 0x020
+#define CHOOSE_ALL   0x040
+#define BUC_BLESSED  0x080
+#define BUC_CURSED   0x100
+#define BUC_UNCURSED 0x200
+#define BUC_UNKNOWN  0x400
+#define BUC_ALLBKNOWN (BUC_BLESSED | BUC_CURSED | BUC_UNCURSED)
+#define BUCX_TYPES (BUC_ALLBKNOWN | BUC_UNKNOWN)
+#define ALL_TYPES_SELECTED -2
+
+/* Flags to control find_mid() */
+#define FM_FMON 0x01    /* search the fmon chain */
+#define FM_MIGRATE 0x02 /* search the migrating monster chain */
+#define FM_MYDOGS 0x04  /* search mydogs */
+#define FM_EVERYWHERE (FM_FMON | FM_MIGRATE | FM_MYDOGS)
+
+/* Flags to control pick_[race,role,gend,align] routines in role.c */
+#define PICK_RANDOM 0
+#define PICK_RIGID 1
+
+/* Flags to control dotrap() in trap.c */
+#define FORCETRAP 0x01     /* triggering not left to chance */
+#define NOWEBMSG 0x02      /* suppress stumble into web message */
+#define FORCEBUNGLE 0x04   /* adjustments appropriate for bungling */
+#define RECURSIVETRAP 0x08 /* trap changed into another type this same turn */
+#define TOOKPLUNGE 0x10    /* used '>' to enter pit below you */
+#define VIASITTING 0x20    /* #sit while at trap location (affects message) */
+#define FAILEDUNTRAP 0x40  /* trap activated by failed untrap attempt */
+
+/* Flags to control test_move in hack.c */
+#define DO_MOVE 0   /* really doing the move */
+#define TEST_MOVE 1 /* test a normal move (move there next) */
+#define TEST_TRAV 2 /* test a future travel location */
+#define TEST_TRAP 3 /* check if a future travel loc is a trap */
+
+/*** some utility macros ***/
+#define yn(query) yn_function(query, ynchars, 'n')
+#define ynq(query) yn_function(query, ynqchars, 'q')
+#define ynaq(query) yn_function(query, ynaqchars, 'y')
+#define nyaq(query) yn_function(query, ynaqchars, 'n')
+#define nyNaq(query) yn_function(query, ynNaqchars, 'n')
+#define ynNaq(query) yn_function(query, ynNaqchars, 'y')
+
+/* Macros for scatter */
+#define VIS_EFFECTS 0x01 /* display visual effects */
+#define MAY_HITMON 0x02  /* objects may hit monsters */
+#define MAY_HITYOU 0x04  /* objects may hit you */
+#define MAY_HIT (MAY_HITMON | MAY_HITYOU)
+#define MAY_DESTROY 0x08  /* objects may be destroyed at random */
+#define MAY_FRACTURE 0x10 /* boulders & statues may fracture */
+
+/* Macros for launching objects */
+#define ROLL 0x01          /* the object is rolling */
+#define FLING 0x02         /* the object is flying thru the air */
+#define LAUNCH_UNSEEN 0x40 /* hero neither caused nor saw it */
+#define LAUNCH_KNOWN 0x80  /* the hero caused this by explicit action */
+
+/* Macros for explosion types */
+enum explosion_types {
+    EXPL_DARK    = 0,
+    EXPL_NOXIOUS = 1,
+    EXPL_MUDDY   = 2,
+    EXPL_WET     = 3,
+    EXPL_MAGICAL = 4,
+    EXPL_FIERY   = 5,
+    EXPL_FROSTY  = 6,
+    EXPL_MAX     = 7
+};
+
+/* enlightenment control flags */
+#define BASICENLIGHTENMENT 1 /* show mundane stuff */
+#define MAGICENLIGHTENMENT 2 /* show intrinsics and such */
+#define ENL_GAMEINPROGRESS 0
+#define ENL_GAMEOVERALIVE  1 /* ascension, escape, quit, trickery */
+#define ENL_GAMEOVERDEAD   2
+
+/* control flags for sortloot() */
+#define SORTLOOT_PACK   0x01
+#define SORTLOOT_INVLET 0x02
+#define SORTLOOT_LOOT   0x04
+#define SORTLOOT_PETRIFY 0x20 /* override filter func for c-trice corpses */
+
+/* flags for xkilled() [note: meaning of first bit used to be reversed,
+   1 to give message and 0 to suppress] */
+#define XKILL_GIVEMSG   0
+#define XKILL_NOMSG     1
+#define XKILL_NOCORPSE  2
+#define XKILL_NOCONDUCT 4
+
+/* pline_flags; mask values for custompline()'s first argument */
+/* #define PLINE_ORDINARY 0 */
+#define PLINE_NOREPEAT   1
+#define OVERRIDE_MSGTYPE 2
+#define SUPPRESS_HISTORY 4
+#define URGENT_MESSAGE   8
+
+/* Macros for messages referring to hands, eyes, feet, etc... */
+enum bodypart_types {
+    ARM       =  0,
+    EYE       =  1,
+    FACE      =  2,
+    FINGER    =  3,
+    FINGERTIP =  4,
+    FOOT      =  5,
+    HAND      =  6,
+    HANDED    =  7,
+    HEAD      =  8,
+    LEG       =  9,
+    LIGHT_HEADED = 10,
+    NECK      = 11,
+    SPINE     = 12,
+    TOE       = 13,
+    HAIR      = 14,
+    BLOOD     = 15,
+    LUNG      = 16,
+    NOSE      = 17,
+    STOMACH   = 18
+};
+
+/* indices for some special tin types */
+#define ROTTEN_TIN 0
+#define HOMEMADE_TIN 1
+#define SPINACH_TIN (-1)
+#define RANDOM_TIN (-2)
+#define HEALTHY_TIN (-3)
+
+/* Some misc definitions */
+#define POTION_OCCUPANT_CHANCE(n) (13 + 2 * (n))
+#define WAND_BACKFIRE_CHANCE 100
+#define BALL_IN_MON (u.uswallow && uball && uball->where == OBJ_FREE)
+#define CHAIN_IN_MON (u.uswallow && uchain && uchain->where == OBJ_FREE)
+#define NODIAG(monnum) ((monnum) == PM_GRID_BUG)
+
+/* Flags to control menus */
+#define MENUTYPELEN sizeof("traditional ")
+#define MENU_TRADITIONAL 0
+#define MENU_COMBINATION 1
+#define MENU_FULL 2
+#define MENU_PARTIAL 3
+
+#define MENU_SELECTED TRUE
+#define MENU_UNSELECTED FALSE
+
+/*
+ * Option flags
+ * Each higher number includes the characteristics of the numbers
+ * below it.
+ */
+/* XXX This should be replaced with a bitmap. */
+#define SET_IN_SYS 0   /* system config file option only */
+#define SET_IN_FILE 1  /* config file option only */
+#define SET_VIA_PROG 2 /* may be set via extern program, not seen in game */
+#define DISP_IN_GAME 3 /* may be set via extern program, displayed in game \
+                          */
+#define SET_IN_GAME 4  /* may be set via extern program or set in the game */
+#define SET_IN_WIZGAME 5  /* may be set set in the game if wizmode */
+#define SET__IS_VALUE_VALID(s) ((s < SET_IN_SYS) || (s > SET_IN_WIZGAME))
+
+#define FEATURE_NOTICE_VER(major, minor, patch)                    \
+    (((unsigned long) major << 24) | ((unsigned long) minor << 16) \
+     | ((unsigned long) patch << 8) | ((unsigned long) 0))
+
+#define FEATURE_NOTICE_VER_MAJ (flags.suppress_alert >> 24)
+#define FEATURE_NOTICE_VER_MIN \
+    (((unsigned long) (0x0000000000FF0000L & flags.suppress_alert)) >> 16)
+#define FEATURE_NOTICE_VER_PATCH \
+    (((unsigned long) (0x000000000000FF00L & flags.suppress_alert)) >> 8)
+
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+#ifndef min
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#define plur(x) (((x) == 1) ? "" : "s")
+
+#define ARM_BONUS(obj)                      \
+    (object_defaults[(obj)->otyp].a_ac + (obj)->spe \
+     - min((int) greatest_erosion(obj), object_defaults[(obj)->otyp].a_ac))
+
+#define makeknown(x) discover_object((x), TRUE, TRUE)
+/* inventory-weight cache (hack.c inv_weight): invalidate when the hero's top-level inventory changes */
+#define nh_invwt_dirty() ((void) (nh_invwt_valid = 0))
+#define nh_deepest_dirty() ((void) (nh_deepest_valid = 0))
+/* Species word: every species-only predicate the monster turn asks, as bits of one 64-bit word per species.
+ * mons[] is const, so the table is built once at library load. SPWQ(p, bit, orig) reads the bit; the verify
+ * build also evaluates the original macro and reports any disagreement. */
+#define SPW_TUNNELS (1ULL << 0)
+#define SPW_NEEDSPICK (1ULL << 1)
+#define SPW_NOHANDS (1ULL << 2)
+#define SPW_VERYSMALL (1ULL << 3)
+#define SPW_GIANT (1ULL << 4)
+#define SPW_COVETOUS (1ULL << 5)
+#define SPW_MINION (1ULL << 6)
+#define SPW_RIDER (1ULL << 7)
+#define SPW_UNICORN (1ULL << 8)
+#define SPW_PASSWALL (1ULL << 9)
+#define SPW_PASSBARS (1ULL << 10)
+#define SPW_HUMAN (1ULL << 11)
+#define SPW_UNDEAD (1ULL << 12)
+#define SPW_THROWSROCKS (1ULL << 13)
+#define SPW_HIDESUNDER (1ULL << 14)
+#define SPW_LIKEGOLD (1ULL << 15)
+#define SPW_LIKEGEMS (1ULL << 16)
+#define SPW_LIKEOBJS (1ULL << 17)
+#define SPW_LIKEMAGIC (1ULL << 18)
+#define SPW_MINDLESS (1ULL << 19)
+#define SPW_ANIMAL (1ULL << 20)
+#define SPW_MERC (1ULL << 21)
+#define SPW_FLYER (1ULL << 22)
+#define SPW_FLOATER (1ULL << 23)
+#define SPW_CLINGER (1ULL << 24)
+#define SPW_SWIMMER (1ULL << 25)
+#define SPW_LIKELAVA (1ULL << 26)
+#define SPW_NONLIVING (1ULL << 27)
+#define SPW_BREATHLESS (1ULL << 28)
+#define SPW_AMORPHOUS (1ULL << 29)
+#define SPW_WHIRLY (1ULL << 30)
+#define SPW_UNSOLID (1ULL << 31)
+#define SPW_WEBMAKER (1ULL << 32)
+#define SPW_TPORT (1ULL << 33)
+#define SPW_WANDER (1ULL << 34)
+#define SPW_PERCEIVES (1ULL << 35)
+#define SPW_INFRAVISIBLE (1ULL << 36)
+#define SPW_NOATTACKS (1ULL << 37)
+#define SPW_WATCH (1ULL << 38)
+#define SPW_MINDFLAYER (1ULL << 39)
+#define SPW_DEMON (1ULL << 40)
+#define SPW_DISPLACES (1ULL << 41)
+#define SPW_RUSTDMG (1ULL << 42)
+#define SPW_CORRDMG (1ULL << 43)
+#define SPW_WEAPATTK (1ULL << 44)
+#define SPW_RANGED (1ULL << 45)
+#define SPW_NODIAG (1ULL << 46)
+#define SPW_HASEYES (1ULL << 47)
+#define SPW_RANDAPPR (1ULL << 48)   /* stalker, bats, lights: random approach draw in m_move() */
+#define SPW_LEPRECHAUN (1ULL << 49)
+#define SPW_MT2_NOFAST (1ULL << 50) /* species the monster-turn fast path leaves on the original code */
+#define SPW_CASTER (1ULL << 51) /* mi: an AT_MAGC attack with AD_SPEL or AD_CLRC */
+#define SPW_HIDEMOVE (1ULL << 52) /* hides under objects or is an eel: the far move's closing hide step */
+#define SPW_ENGULFER (1ULL << 53) /* c1: an AT_ENGL attack */
+#define SPW_HATESSILVER (1ULL << 54) /* c1: hates_silver() */
+#define SPW_WINDOW_SHIFT 55 /* nd: bits 55-63, the move-window bits the species may take (0x0aa NODIAG, else 0x1ff) */
+extern unsigned long long nh_spw[NUMMONS];
+extern short nh_spw_maxload[NUMMONS]; /* max_mon_load() per species */
+extern unsigned char nh_spw_likes[NUMMONS]; /* lk: the far move's like bits the species can have; 64: one of them needs the load */
+#define SPWQ(p, bit, orig) ((nh_spw[(const struct permonst *) (p) - mons] & (bit)) != 0)
+
+/* a monster's inventory-weight cache (mon.c curr_mon_load) in the spare bytes after the struct in its pool slot, on minvent's
+   line; boulder < 0 means not valid. Invalidated when the monster's slot is handed out, at every minvent membership change
+   (add_to_minv, obj_extract_self, replace_object, replmon) and at every owt or otyp write to a carried object */
+struct nh_mload {
+    int nb, boulder;
+};
+#define nh_mload_of(m) ((struct nh_mload *) ((char *) (m) + sizeof(struct monst)))
+#define nh_mload_dirty(m) ((void) (nh_mload_of(m)->boulder = -1))
+#define nh_owt_dirty(o) ((o)->where == OBJ_INVENT ? nh_invwt_dirty() : (o)->where == OBJ_MINVENT ? nh_mload_dirty((o)->ocarry) : (void) 0)
+#define nh_set_owt(o) ((o)->owt = weight(o), nh_owt_dirty(o))
+/* after a write to a field the inventory export reads (obj.h, NH_OBJ_AUDIT lists them): the next full fill walks */
+void nh_inv_touched(void);
+#define nh_inv_touch(o) ((o)->where == OBJ_INVENT ? nh_inv_touched() : (void) 0)
+#define distu(xx, yy) dist2((int)(xx), (int)(yy), (int) u.ux, (int) u.uy)
+#define onlineu(xx, yy) online2((int)(xx), (int)(yy), (int) u.ux, (int) u.uy)
+
+#define rn1(x, y) (rn2(x) + (y))
+#define rn1_hot(x, y) (rn2_hot(x) + (y))
+
+/* negative armor class is randomly weakened to prevent invulnerability */
+#define AC_VALUE(AC) ((AC) >= 0 ? (AC) : -rnd(-(AC)))
+
+#if defined(MICRO) && !defined(__DJGPP__)
+#define getuid() 1
+#define getlogin() ((char *) 0)
+#endif /* MICRO */
+
+#if defined(OVERLAY)
+#define USE_OVLx
+#define STATIC_DCL extern
+#define STATIC_OVL
+#define STATIC_VAR
+
+#else /* !OVERLAY */
+
+#define STATIC_DCL static
+#define STATIC_OVL static
+#define STATIC_VAR static
+
+#endif /* OVERLAY */
+
+/* Macro for a few items that are only static if we're not overlaid.... */
+#if defined(USE_TRAMPOLI) || defined(USE_OVLx)
+#define STATIC_PTR
+#else
+#define STATIC_PTR static
+#endif
+
+/* The function argument to qsort() requires a particular
+ * calling convention under WINCE which is not the default
+ * in that environment.
+ */
+#if defined(WIN_CE)
+#define CFDECLSPEC __cdecl
+#else
+#define CFDECLSPEC
+#endif
+
+#define DEVTEAM_EMAIL "devteam@nethack.org"
+#define DEVTEAM_URL "https://www.nethack.org/"
+
+/* fast-nle: per-env context (struct nh_ctx, nh_cur, global accessors).
+ * Included last so every game type is complete when the struct is defined.
+ * isaac64.h supplies the RNG state type for the ctx fields.
+ * See docs/DESIGN.md §2 and tools/globals.def. */
+#include "isaac64.h"
+#include "nh_ctx_gen.h"
+
+/* NLE: hot leaf (4% of env CPU), K&R def defeated LTO inlining — static
+   inline here, not extern.h: extern.h's body is compiled out under
+   LEV_LEX_C/MAKEDEFS_C, and is_moat below needs isok in every hack.h
+   consumer (including lev_comp). Old def removed from cmd.c. */
+static inline int
+isok(int x, int y)
+{
+    /* x corresponds to curx, so x==1 is the first column. Ach. %% */
+    return x >= 1 && x <= COLNO - 1 && y >= 0 && y <= ROWNO - 1;
+}
+
+/* index(s, c) != 0 (the terminator matches c == '\0') without a libc call, for short strings */
+static inline int
+nh_strhas(const char *s, char c)
+{
+    for (;; s++) {
+        if (*s == c)
+            return 1;
+        if (!*s)
+            return 0;
+    }
+}
+
+/* Strcpy of a short string: the same bytes, up to and including the NUL */
+static inline void
+nh_strcpy_short(char *d, const char *s)
+{
+    while ((*d++ = *s++) != '\0')
+        ;
+}
+
+/* NLE: hot terrain predicates from dbridge.c, inlined so callers testing
+   several of them on the same cell (mfndpos etc.) can share the levl
+   load. Bodies unchanged. The bodies need the per-env ctx accessors AND
+   extern.h declarations (on_level via Is_juiblex_level), so TUs compiled
+   with extern.h's body disabled (lev_comp/makedefs) get extern prototypes
+   instead — none of them call these; a new caller there would fail at
+   link, loudly. */
+#if !defined(NH_CTX_GEN_H) || defined(LEV_LEX_C) || defined(MAKEDEFS_C)
+extern boolean is_pool(int, int);
+extern boolean is_lava(int, int);
+extern boolean is_pool_or_lava(int, int);
+extern boolean is_ice(int, int);
+extern boolean is_moat(int, int);
+#else
+static inline boolean
+is_moat(int x, int y)
+{
+    schar ltyp;
+
+    if (!isok(x, y))
+        return FALSE;
+    ltyp = NH_TILE(x, y).typ;
+    if (!Is_juiblex_level(&u.uz)
+        && (ltyp == MOAT
+            || (ltyp == DRAWBRIDGE_UP
+                && (NH_TILE(x, y).drawbridgemask & DB_UNDER) == DB_MOAT)))
+        return TRUE;
+    return FALSE;
+}
+
+/* the terrain minliquid() acts on (its own first test, inlined at the call sites) */
+/* objects[otyp].oc_name_known from the one-line bitset rebuilt with the discovery mirror (nle_ocg_sync) */
+static inline int
+nle_ocg_known(int otyp)
+{
+    return (int) ((nh_cur->g_nh_ocg_nk[otyp >> 6] >> (otyp & 63)) & 1ULL);
+}
+static inline int
+nh_typ_liquidish(schar typ)
+{
+    const unsigned long long liquidish = (1ULL << POOL) | (1ULL << MOAT) | (1ULL << WATER) | (1ULL << DRAWBRIDGE_UP) | (1ULL << LAVAPOOL) | (1ULL << FOUNTAIN);
+
+    return (int) ((liquidish >> (typ & 63)) & 1); /* one bit test: every typ is below MAX_TYPE (36), and INVALID_TYPE (127) maps to an empty bit */
+}
+static inline int
+nh_typ_special(schar typ)
+{
+    return typ == DOOR || typ == IRONBARS || typ == ALTAR || (typ >= POOL && typ <= LAVAPOOL)
+           || typ == DRAWBRIDGE_DOWN || typ == AIR || typ == CLOUD;
+}
+static inline void
+nh_move_typ_set(int x, int y, schar typ)
+{
+    nh_typ_plane[x][y] = typ;
+    nh_move_set_terrain(level.move_columns, x, y, !IS_ROCK(typ));
+    nh_move_set_col_bit(&level.move_columns[x + 1].special, y, nh_typ_special(typ));
+    nh_move_set_col_bit(&level.move_columns[x + 1].door, y, typ == DOOR);
+    nh_move_col_sync_bad(&level.move_columns[x + 1]);
+    nh_vis_epoch++; /* vision input */
+}
+#define TYP_AT(x, y) (NH_TILE((x), (y)).typ) /* the cell its reader mostly holds; the plane serves the column scans */
+/* engr_at()'s own first test: the column bitmap says whether anything is engraved at (x, y) */
+static inline int
+nh_engr_here(int x, int y)
+{
+    return (unsigned) x < COLNO && (unsigned) y < ROWNO && ((level.move_columns[x + 1].engr >> y) & 1U);
+}
+#define NH_CYC(n) n
+/* vision (lazy slot 2, never in a checkpoint): vis_clean[k] = every nonzero byte of could_see[k] lies inside its row bounds */
+#define NH_VISCACHE_SLOT 2
+struct nh_vis_cache { unsigned char vis_clean[2]; };
+extern struct nh_vis_cache *nh_vis_cache(void);
+#define SET_TYP_XY(x, y, ...) \
+    do { schar set_typ_v_ = (__VA_ARGS__); NH_TILE(x, y).typ = set_typ_v_; \
+         nh_move_typ_set((x), (y), set_typ_v_); } while (0)
+#define SET_TYP_P(p, ...) \
+    do { schar set_typ_v_ = (__VA_ARGS__); \
+         (p)->typ = set_typ_v_; \
+         uintptr_t set_typ_p_ = (uintptr_t) (p); \
+         uintptr_t set_typ_b_ = (uintptr_t) &level.locations[0][0]; \
+         if (set_typ_p_ >= set_typ_b_ \
+             && set_typ_p_ - set_typ_b_ < sizeof(level.locations) \
+             && (set_typ_p_ - set_typ_b_) % sizeof(struct rm) == 0) { \
+             unsigned int i_ = (set_typ_p_ - set_typ_b_) / sizeof(struct rm); \
+             nh_move_typ_set(i_ / ROWNO, i_ % ROWNO, set_typ_v_); \
+         } } while (0)
+extern void NDECL(nh_typ_sync);
+struct nh_fobj_cursor { unsigned long generation; int index, fallback; unsigned int mask; int base, lx, hx, ly, hy; };
+extern void NDECL(nh_fobj_invalidate);
+extern void FDECL(nh_fobj_placed, (struct obj *));
+extern void FDECL(nh_fobj_removed, (struct obj *));
+extern struct obj *FDECL(nh_fobj_next, (struct nh_fobj_cursor *, struct obj *, int, int, int, int));
+extern int FDECL(nh_fobj_box, (int, int, int, int, struct obj **, int));
+extern void FDECL(nh_typ_verify, (const char *));
+
+static inline boolean
+is_pool(int x, int y)
+{
+    schar ltyp;
+
+    if (!isok(x, y))
+        return FALSE;
+    ltyp = TYP_AT(x, y);
+    /* The ltyp == MOAT is not redundant with is_moat, because the
+     * Juiblex level does not have moats, although it has MOATs. There
+     * is probably a better way to express this. */
+    if (ltyp == POOL || ltyp == MOAT || ltyp == WATER || is_moat(x, y))
+        return TRUE;
+    return FALSE;
+}
+
+static inline boolean
+is_lava(int x, int y)
+{
+    schar ltyp;
+
+    if (!isok(x, y))
+        return FALSE;
+    ltyp = TYP_AT(x, y);
+    if (ltyp == LAVAPOOL
+        || (ltyp == DRAWBRIDGE_UP
+            && (NH_TILE(x, y).drawbridgemask & DB_UNDER) == DB_LAVA))
+        return TRUE;
+    return FALSE;
+}
+
+static inline boolean
+is_pool_or_lava(int x, int y)
+{
+    if (is_pool(x, y) || is_lava(x, y))
+        return TRUE;
+    else
+        return FALSE;
+}
+
+static inline boolean
+is_ice(int x, int y)
+{
+    schar ltyp;
+
+    if (!isok(x, y))
+        return FALSE;
+    ltyp = TYP_AT(x, y);
+    if (ltyp == ICE || (ltyp == DRAWBRIDGE_UP
+                        && (NH_TILE(x, y).drawbridgemask & DB_UNDER) == DB_ICE))
+        return TRUE;
+    return FALSE;
+}
+#endif /* NH_CTX_GEN_H */
+
+#endif /* HACK_H */

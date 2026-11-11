@@ -1,0 +1,25 @@
+# Pins of the stock differential. stock/build.sh checks the [stock] pins, certify.sh the library, the digest ids and the
+# corpora (corpora/assets.tsv). A new digest definition is pinned only after the coverage checks in README.md have passed on it.
+
+[stock]
+# NLE 0.9.0, the last NLE release on NetHack 3.6.6; PyPI has only this sdist (no wheel)
+sdist = "nle-0.9.0.tar.gz"
+sdist_url = "https://files.pythonhosted.org/packages/12/4f/af454188d1f16c7023c54dc0c89199c571ccfffe55f0a6a829ec96c62685/nle-0.9.0.tar.gz"
+sdist_sha256 = "a98644bdd547017cdde9fdf589b245da98ff8753327285e949d506d9006f10d4"
+# NetHack 3.7's attknum = 0 in hitum_cleave (3.6.6 reads it uninitialised)
+patch = "stock/attknum.patch"
+patch_sha256 = "dd719e3f05e4fdb494e0cc23025db60d82f7e6a763881db711e9f42f23c77fa8"
+# CMake Release (-O3 -DNDEBUG), target nethack, as pip builds NLE 0.9.0
+compiler = "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+# __FILE__ prefix and build stamp the certified reference was built with: strings in the binary, not paths on this machine
+file_prefix = "/puffertank/nle-stock"
+build_epoch = 1788913779
+date_h_sha256 = "dd4a1b804e135038ce4ab33b469b06a5a10a632b45f854c2679ff8b6bbbc7737"
+library_sha256 = "f0b4a412a8a3aa2f3cfb80cf198deac0a3d201c398a3266abfaa7b1808fd5390"
+nhdat_sha256 = "cc8e7a7b3db370b503b2bd605bdea4bdfa875cc735906c855137242aee30e5c8"
+
+[digest]
+# ph_digest_id of src/ph_digest.c + include/ph_digest.h, equal on the engine and the stock side
+id = "5d64642fd3b202be"
+# the stock adapter (src/phd_stock.c + src/appearance_canon.h)
+adapter_id = "b16cbd0817266914"

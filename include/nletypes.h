@@ -1,0 +1,223 @@
+
+#ifndef NLETYPES_H
+#define NLETYPES_H
+
+#include <fcontext/fcontext.h>
+#include <stdbool.h>
+#include <stdio.h>
+
+#define NLE_MESSAGE_SIZE 256
+#define NLE_BLSTATS_SIZE 27
+#define NLE_PROGRAM_STATE_SIZE 6
+#define NLE_INTERNAL_SIZE \
+    11 /* 9,10: killer mnum+1 / mlevel, written at death only */
+#define NLE_MISC_SIZE 3
+#define NLE_INVENTORY_SIZE 55
+#define NLE_INV_STATE_FIELDS 8
+#define NLE_INVENTORY_STR_LENGTH 80
+#define NLE_SCREEN_DESCRIPTION_LENGTH 80
+#define NLE_TERM_CO 80
+#define NLE_TERM_LI 24
+
+/* blstats indices, see also botl.c and statusfields in botl.h. */
+#define NLE_BL_X 0
+#define NLE_BL_Y 1
+#define NLE_BL_STR25 2  /* strength 3..25 */
+#define NLE_BL_STR125 3 /* strength 3..125   */
+#define NLE_BL_DEX 4
+#define NLE_BL_CON 5
+#define NLE_BL_INT 6
+#define NLE_BL_WIS 7
+#define NLE_BL_CHA 8
+#define NLE_BL_SCORE 9
+#define NLE_BL_HP 10
+#define NLE_BL_HPMAX 11
+#define NLE_BL_DEPTH 12
+#define NLE_BL_GOLD 13
+#define NLE_BL_ENE 14
+#define NLE_BL_ENEMAX 15
+#define NLE_BL_AC 16
+#define NLE_BL_HD 17  /* monster level, "hit-dice" */
+#define NLE_BL_XP 18  /* experience level */
+#define NLE_BL_EXP 19 /* experience points */
+#define NLE_BL_TIME 20
+#define NLE_BL_HUNGER 21 /* hunger state */
+#define NLE_BL_CAP 22    /* carrying capacity */
+#define NLE_BL_DNUM 23
+#define NLE_BL_DLEVEL 24
+#define NLE_BL_CONDITION 25 /* condition bit mask */
+#define NLE_BL_ALIGN 26
+
+/* NetHack defines boolean as follows:
+    typedef xchar boolean;      (global.h:80)
+    typedef schar xchar;        (global.h:73)
+    typedef signed char schar;  (config.h:420)
+
+So we'll do the same to avoid having to include all of NetHack's types
+*/
+typedef signed char boolean;
+
+typedef struct TMT TMT;
+
+typedef struct nle_observation {
+    int action;
+    int done;
+    char in_normal_game;     /* Bool indicating if other obs are set. */
+    int how_done;            /* If game is really_done, how it ended. */
+    short *glyphs;           /* Size ROWNO * (COLNO - 1) */
+    unsigned char *chars;    /* Size ROWNO * (COLNO - 1) */
+    unsigned char *colors;   /* Size ROWNO * (COLNO - 1) */
+    unsigned char *specials; /* Size ROWNO * (COLNO - 1) */
+    long *blstats;           /* Size NLE_BLSTATS_SIZE */
+    unsigned char *message;  /* Size NLE_MESSAGE_SIZE */
+    /* renamed from program_state: that token is a migrated game global
+     * whose accessor macro would expand inside this declaration and at
+     * every obs->program_state use site after hack.h. */
+    int *prog_state;   /* Size NLE_PROGRAM_STATE_SIZE */
+    int *internal;     /* Size NLE_INTERNAL_SIZE */
+    short *inv_glyphs; /* Size NLE_INVENTORY_SIZE */
+    unsigned char
+        *inv_strs; /* Size NLE_INVENTORY_SIZE * NLE_INVENTORY_STR_LENGTH */
+    unsigned char *inv_letters;         /* Size NLE_INVENTORY_SIZE */
+    unsigned char *inv_oclasses;        /* Size NLE_INVENTORY_SIZE */
+    unsigned char *screen_descriptions; /* Size ROWNO * (COLNO - 1) *
+                                           NLE_SCREEN_DESCRIPTION_LENGTH */
+    unsigned char *tty_chars;           /* Size NLE_TERM_LI * NLE_TERM_CO */
+    signed char *tty_colors;            /* Size NLE_TERM_LI * NLE_TERM_CO */
+    unsigned char *tty_cursor;          /* Size 2 */
+    int *misc;                          /* Size NLE_MISC_SIZE */
+    /* Per-slot identification-gated item state, mirroring what doname
+       displays: [buc, spe, quan, eroded, eroded2, flags, typeknown, rsvd].
+       Size NLE_INVENTORY_SIZE * NLE_INV_STATE_FIELDS. */
+    signed char *inv_state;
+    /* Discovered-type channel: per slot, the TRUE (unshuffled) object glyph
+       iff the inventory line would print the real name (dknown &&
+       oc_name_known — the xname rule), else NO_GLYPH. The appearance stays
+       in inv_glyphs; this exports the discoveries list, not hidden state.
+       Size NLE_INVENTORY_SIZE. */
+    short *inv_true_glyphs;
+    /* Opt-in cheap fills: when set, in-game fills export only prog_state,
+       misc and message (what a multi-key wrapper reads between keystrokes);
+       glyphs/blstats/internal/inv_* wait for the next full fill — either a
+       fill with this clear or an explicit nle_obs_refresh() at the step
+       boundary. Boot and gameover fills ignore it (always full/zeroed). */
+    char partial;
+} nle_obs;
+
+typedef struct {
+    unsigned long seeds[2]; /* core, disp */
+    char reseed; /* boolean: use NetHack's anti-TAS reseed mechanism? */
+    bool use_init_seeds;     /* bool to tell NLE if seeds were provided */
+    unsigned long lgen_seed; /* seed for level generation RNG */
+    bool use_lgen_seed; /* bool to tell NLE to use level generation RNG */
+} nle_seeds_init_t;
+
+typedef struct nle_settings {
+    /*
+     *  Path to NetHack's game files.
+     */
+    char hackdir[4096];
+    char scoreprefix[4096];
+    char options[32768];
+    char wizkit[4096];
+    /*
+     * Bool indicating whether to spawn monsters randomly after every step
+     * with some probability (1 by def). For more info, see
+     * https://nethackwiki.com/wiki/Monster_creation#Random_generation
+     */
+    int spawn_monsters;
+    /*
+     * Bool (0 by def): the hero's map tile shows the top object (else the
+     * terrain) underneath instead of the hero glyph. The hero position is
+     * in blstats; the display glyph occludes exactly the items an agent
+     * stands on. Affects obs->glyphs only.
+     */
+    int underfoot_glyphs;
+    /*
+     * Filename for nle's ttyrec*.bz2.
+     */
+    char ttyrecname[4096];
+
+    /* Initial seeds for the RNGs */
+    nle_seeds_init_t initial_seeds;
+
+    /*
+     * If true and seeds are set, derive deterministic time values
+     * (moon phase, friday 13th, night, midnight) from the seed
+     * instead of using real system time.
+     */
+    bool fix_moon_phase;
+    unsigned long time_seed;
+    bool time_seed_is_set;
+
+    /* the logfile and xlogfile appends are skipped (the game reads back only the record file) */
+    bool skip_gamelogs;
+    /* discovered types show their true glyphs on the map */
+    bool true_glyphs;
+
+} nle_settings;
+
+/* observation-side values computed by the last full fill: the perceived inventory weight nle_weight() reports; inv_dirty: an
+   export-relevant field of a hero-inventory object was written since the last inventory walk; strs_gap: a call ran with
+   inv_strs unbound, so the item names were not kept and a later inv_strs binding is refused */
+struct nh_obs_cache { short wt_valid; char inv_dirty, strs_gap; int wt; };
+
+typedef struct nle_globals {
+    /* read or written by every step: one 64-B line (init_nle allocates the struct 64-B aligned) */
+    fcontext_t returncontext;
+    fcontext_t generatorcontext;
+
+    /* fast-nle: per-env window-port state (was static in winrl.cc).
+     * rl_instance holds the NetHackRL object (C++, hence void*); the two
+     * flags feed the misc/internal observation fields. */
+    void *rl_instance;
+    char *outbuf_write_ptr;
+    nle_obs *observation;
+
+    /* fast-nle: this env's migrated game state (struct nh_ctx, generated
+     * from tools/globals.def). Opaque here to keep game headers out. */
+    void *nh;
+
+    boolean done;
+    char rl_in_yn_function;
+    char rl_in_getlin;
+
+    /* Precomputed at nle_start: 1 if tty escape bytes must be produced
+     * (a tty_* observation is bound, or a ttyrec is being recorded).
+     * Gates byte emission only — tty window STATE updates (curx/cury,
+     * topline wrap driving --More-- pacing) always run. */
+    char tty_emit;
+    /* settings.spawn_monsters / underfoot_glyphs, read every turn: kept beside the window-port fields every step reads */
+    char spawn_monsters, underfoot_glyphs;
+    char has_ttyrec; /* ttyrec != NULL */
+    char cmd_shared; /* this game's Cmd equals nh_cmd_shared, so cmd.c reads the shared copy (nh_cmd_share) */
+    struct nh_obs_cache obs_cache;
+
+    fcontext_stack_t stack;
+    FILE *ttyrec;
+    TMT *vterminal;
+    char *outbuf_write_end;
+    char uname_made; /* some object type got a called name (docall, restnames) */
+    char rl_in_getpos; /* getpos waits for a key: 1 a position is required, 2 ESC aborts (nle_in_getpos) */
+    char wiz_error_flag; /* unixmain.c: this game was refused wizard mode (stock's file static, fresh per game) */
+    char options_set;
+    unsigned options_id; /* nle_ckpt.c: the fingerprint of the options this game was started with, once options_set */
+
+    /* Unconditional: this struct's layout must be IDENTICAL in every TU,
+     * and NLE_BZ2_TTYRECS is only defined where bzlib.h is included. An
+     * #ifdef here once made nle.c and nlernd.c disagree about the offset
+     * of every following field (8-byte ghost). */
+    void *ttyrec_bz2;
+    /* the options file this game reads (files.c set_configfile_name; was a process global that games starting on other
+       threads overwrote between its write and its use). Zeroed by init_nle */
+    char configfile[256];
+    char outbuf[BUFSIZ];
+
+    /* fast-nle: per-env copy of the caller's nle_settings (was a process
+     * global; accessor macro `settings` in nle.h). */
+    nle_settings settings;
+} nle_ctx_t;
+
+/* (nle_settings moved above nle_ctx_t — it is a member now) */
+
+#endif /* NLETYPES_H */

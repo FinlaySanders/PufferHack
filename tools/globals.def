@@ -1,0 +1,601 @@
+# Per-env mutable-state inventory (see docs/DESIGN.md §2).
+#
+# Every writable symbol in libnethack (tools/global_baseline.txt) either gets
+# an entry here (migrated into struct nh_ctx) or a justified entry in
+# tools/global_whitelist.txt. tools/gen_ctx.py generates the struct, accessor
+# macros, and init code from this file; run it after every edit:
+#
+#   python3 tools/gen_ctx.py
+#
+# Format (pipe-separated, '#' comments, whitespace trimmed):
+#
+#   scope | heat | type | name | dims | init
+#
+#   scope: 'global' for true globals (accessor emitted into nh_ctx_gen.h,
+#          visible everywhere), or the defining .c file's basename
+#          (e.g. 'track.c') for file statics (accessor emitted into
+#          include/nh_ctx_files/<file>.h, included only by that file).
+#   heat:  'hot' (touched every step; packed first, prefetch-covered) or
+#          'cold'. Classify from profiles, not intuition.
+#   type:  C type as written in the original declaration.
+#   dims:  array suffix, e.g. '[50]' or '[21][80]'; empty for scalars.
+#          Must compile inside hack.h context — use literals for macros
+#          that are private to the defining file.
+#   init:  0 = zero-initialized (.bss/.common; calloc covers it).
+#          1 = has a non-zero initializer (.data). The original definition
+#          becomes 'const <type> nh_tmpl_<name><dims> = <original init>;'
+#          at its original site, and nh_ctx_new() memcpys it in.
+#
+# Special forms:
+#   type containing '{NAME}' is a full declarator with a placeholder
+#   (function pointers etc.); dims must be empty.
+#   Fields initialized with addresses of other ctx fields (e.g.
+#   subrooms = &rooms[N]) use init=0 here plus an assignment in the
+#   handwritten src/nh_ctx_fixup.c.
+#
+# ---------------------------------------------------------------------------
+# track.c — hero movement ring (first migrated slice)
+# ---------------------------------------------------------------------------
+# decl.c — the central globals file. Heat: step-hot scalars/pointers first;
+# the big structs (u, level, youmonst, flags) are hot too but dominate their
+# own cache lines regardless of placement.
+# c_color_names / c_common_strings / c_obj_colors / materialnm /
+# fqn_prefix_names: never written -> const-ified in decl.c/decl.h instead of
+# migrated (drops them from the writable sections entirely).
+# cmd.c (ported wholesale from old fork; lazy slots 3=cmd_state 4=clicklook_cc)
+# vision.c (ported from old fork; lazy slots 6=close_dy 7=far_dy)
+# botl.c (ported from old fork; lazy slots 8=blstats 9=status_hilites 10=state)
+# sp_lev.c (lazy slot 12 = function-local state; lregions shared with mkmaze.c)
+# mkmaze.c (lazy slot 13 = bughack lev_region)
+# display.c (lazy slots 14=state 15=gbuf)
+# invent.c (lazy slot 16 = let_to_name scratch buffer)
+# windows.c (lazy slot 22 = state) — status arrays shared with wintty.c
+# wintty.c (lazy slots 17=tty_status 18=state)
+# topl.c (lazy slot 21 = state)
+# getline.c
+# NLE-layer flag read by both getline.c and winrl.cc
+# files.c (lazy slot 23 = state)
+# dungeon.c cross-TU counter (files.c also uses it)
+# shk.c (lazy slot 24 = state)
+# muse.c (lazy slot 25 = struct musable)
+# pickup.c
+# hack.c
+# do_name.c (lazy slot 26 = state)
+# trap.c (lazy slots 27=acid_ctx 28=launchplace)
+# restoring flag (decl.h global, defined in restore.c in stock)
+# notonhead (decl.h global; cross-TU: artifact/apply/potion etc.)
+# NLE RNG seed record (hacklib.c / nlernd.c)
+# rumors.c (lazy slots 29=oracle_loc 30=state)
+# artifact.c (lazy slot 31 = artilist copy)
+# apply.c (lazy slot 11 = state)
+# save.c
+# role.c
+# lock.c
+# restore.c
+# hacklib.c
+# eat.c (lazy slot 33 = eatmbuf)
+# potion.c
+# do.c
+# questpgr.c (lazy slot 34 = qt_list)
+# pline.c (lazy slot 35 = state)
+# mon.c (lazy slot 36 = animal_list)
+# mhitm.c
+# spell.c (lazy slot 37 = orderindx)
+# makemon.c (lazy slot 38 = rndmonst state)
+# end.c (lazy slot 39 = Schroedingers_cat)
+# rnd.c — ISAAC64 RNG state, THE per-env determinism core (fixup: disprng seed = 1)
+# nlernd.c — level-generation RNG (heiner/nle feature; not in old fork)
+# engrave.c / light.c / timeout.c — per-level chains and timers
+# region.c (regions array is realloc'd, keep as raw pointer field)
+# worm.c — MAXWORM=32 arrays inline
+# dungeon.c
+# mklev.c
+# rect.c (lazy slot 42 = rect array)
+# dogmove.c (lazy slot 43 = dokick state)
+# mthrowu.c
+# mhitu.c
+# drawing.c — per-env symbol tables (symset options are per-env)
+# steal.c / weapon.c / pray.c / zap.c / uhitm.c (slot 45=state) etc.
+# options.c residuals (slot 49 = next_opt buffer)
+# Ordered floor-object search cache. Cold section avoids shifting hot state.
+# Locally maintained movement summaries; terrain layout remains original.
+
+# ---- hot: touched every step (ordered by access pattern; re-annotated 2026-10-10 from the callgrind footprint) ----
+global | hot | long | moves | | 1
+global | hot | int | nh_invwt_valid | | 0
+global | hot | int | nh_display_sense | | 0
+global | hot | long | nh_invwt_nb | | 0
+global | hot | long | nh_invwt_boulder | | 0
+global | hot | long | monstermoves | | 1
+global | hot | int | multi | | 0
+global | hot | struct sinfo | program_state | | 0
+global | hot | int (*{NAME})(void) | occupation | | 0
+global | hot | int (*{NAME})(void) | afternmv | | 0
+global | hot | boolean | vision_full_recalc | | 0
+global | hot | int | xwaitingforspace | | 0
+global | hot | coord | bhitpos | | 0
+global | hot | struct u_realtime | urealtime | | 0
+global | hot | struct obj * | invent | | 0
+global | hot | struct trap * | ftrap | | 0
+global | hot | struct obj * | migrating_objs | | 0
+light.c | hot | void * | light_base | | 0
+timeout.c | hot | void * | timer_base | | 0
+timeout.c | hot | unsigned long | timer_id | | 0   # fixup: 1
+engrave.c | hot | struct engr * | head_engr | | 0
+region.c | hot | void * | regions_p | | 0
+region.c | hot | int | n_regions | | 0
+dungeon.c | hot | int | n_dgns | | 0
+mon.c | hot | void * | mon_pool | | 0
+mon.c | hot | boolean | disintegested | | 0
+hack.c | hot | schar | spotloc_x | | 0
+hack.c | hot | schar | spotloc_y | | 0
+hack.c | hot | int | spotterrain | | 0
+hack.c | hot | struct trap * | spottrap | | 0
+hack.c | hot | unsigned | spottraptyp | | 0
+hack.c | hot | int | wc | | 0
+hack.c | hot | long | moverock_lastmovetime | | 0
+hack.c | hot | int | inspoteffects | | 0
+hack.c | hot | int | domove_skates | | 0
+hack.c | hot | char | in_rooms_buf | [5] | 0
+dogmove.c | hot | schar | gtyp | | 0
+dogmove.c | hot | schar | gx | | 0
+dogmove.c | hot | schar | gy | | 0
+mhitu.c | hot | int | dieroll | | 0
+mhitu.c | hot | struct obj * | mon_currwep | | 0
+weapon.c | hot | struct obj * | propellor | | 0
+trap.c | hot | int | force_mintrap | | 0
+trap.c | hot | boolean | recursive_mine | | 0
+rnd.c | hot | unsigned | rn2disprng_seed | | 0
+display.c | hot | int | flushing | | 0
+display.c | hot | int | delay_flushing | | 0
+display.c | hot | boolean | in_cls | | 0
+display.c | hot | int | nul_gbuf_new | | 0
+display.c | hot | int | nul_gbuf_glyph | | 0
+display.c | hot | char | gbuf_start | [ROWNO] | 0
+display.c | hot | char | gbuf_stop | [ROWNO] | 0
+botl.c | hot | boolean | valset | [23] | 0        # MAXBLSTATS
+botl.c | hot | boolean | update_all | | 0
+botl.c | hot | boolean | blinit | | 0
+botl.c | hot | long | bl_hilite_moves | | 0
+cmd.c | hot | int | phead | | 0
+cmd.c | hot | int | ptail | | 0
+cmd.c | hot | int | shead | | 0
+cmd.c | hot | int | stail | | 0
+cmd.c | hot | char | pushq | [20] | 0   # BSIZE
+cmd.c | hot | char | saveq | [20] | 0   # BSIZE
+cmd.c | hot | const char * | readchar_queue | | 0   # fixup: ""
+cmd.c | hot | int | alt_esc | | 0
+cmd.c | hot | int (*{NAME})(void) | timed_occ_fn | | 0
+track.c | hot | int   | utcnt  |      | 0
+track.c | hot | int   | utpnt  |      | 0
+track.c | hot | coord | utrack | [50] | 0
+vision.c | hot | int | vis_start_row | | 0
+vision.c | hot | int | vis_start_col | | 0
+vision.c | hot | int | vis_step | | 0
+vision.c | hot | char ** | vis_cs_rows | | 0
+vision.c | hot | char * | vis_cs_left | | 0
+vision.c | hot | char * | vis_cs_right | | 0
+vision.c | hot | void (*{NAME})() | vis_func | | 0
+vision.c | hot | void * | vis_varg | | 0
+vision.c | hot | int | vision_recur_depth | | 0
+global | hot | char ** | viz_array | | 0
+vision.c | hot | char * | viz_rmin | | 0
+vision.c | hot | char * | viz_rmax | | 0
+vision.c | hot | char * | viz_clear_rows | [ROWNO] | 0
+vision.c | hot | char * | cs_rows0 | [ROWNO] | 0
+vision.c | hot | char * | cs_rows1 | [ROWNO] | 0
+vision.c | hot | char | cs_rmin0 | [ROWNO] | 0
+vision.c | hot | char | cs_rmax0 | [ROWNO] | 0
+vision.c | hot | char | cs_rmin1 | [ROWNO] | 0
+vision.c | hot | char | cs_rmax1 | [ROWNO] | 0
+global | hot | struct you | u | | 0
+global | hot | struct monst | youmonst | | 0
+global | hot | struct flag | flags | | 0
+global | hot | struct instance_flags | iflags | | 0
+global | hot | struct context_info | context | | 0
+global | hot | dungeon | dungeons | [MAXDUNGEON] | 0
+vision.c | hot | unsigned char | vision_colbump | [COLNO + 1] | 0
+global | hot | unsigned char | nh_track_near | [COLNO][ROWNO] | 0
+global | hot | schar | nh_typ_plane | [COLNO][ROWNO] | 0
+vision.c | hot | char | could_see | [2][ROWNO][COLNO] | 0
+vision.c | hot | char | viz_clear | [ROWNO][COLNO] | 0
+vision.c | hot | char | left_ptrs | [ROWNO][COLNO] | 0
+vision.c | hot | char | right_ptrs | [ROWNO][COLNO] | 0
+drawing.c | hot | nhsym | showsyms | [SYM_MAX] | 0
+rnd.c | hot | isaac64_ctx | rng_state | [2] | 0
+rnd.c | hot | int | rng_init | [2] | 0
+
+# ---- cold ----
+global | cold | const char * | hname | | 0
+global | cold | int | hackpid | | 0
+global | cold | int | locknum | | 0
+global | cold | char | chosen_windowtype | [WINTYPELEN] | 0
+global | cold | int | bases | [MAXOCLASSES] | 0
+global | cold | const char * | multi_reason | | 0
+global | cold | int | nroom | | 0
+global | cold | int | nsubroom | | 0
+global | cold | int | occtime | | 0
+global | cold | int | x_maze_max | | 1
+global | cold | int | y_maze_max | | 1
+global | cold | int | otg_temp | | 0
+global | cold | int | in_doagain | | 0
+global | cold | struct dgn_topology | dungeon_topology | | 0
+global | cold | struct q_score | quest_status | | 0
+global | cold | int | warn_obj_cnt | | 0
+global | cold | int | smeq | [MAXNROFROOMS + 1] | 0
+global | cold | int | doorindex | | 0
+global | cold | char * | save_cm | | 0
+global | cold | struct kinfo | killer | | 0
+global | cold | long | done_money | | 0
+global | cold | const char * | nomovemsg | | 0
+global | cold | char | plname | [PL_NSIZ] | 0
+global | cold | char | pl_character | [PL_CSIZ] | 0
+global | cold | char | pl_race | | 0
+global | cold | char | pl_fruit | [PL_FSIZ] | 0
+global | cold | struct fruit * | ffruit | | 0
+global | cold | char | tune | [6] | 0
+global | cold | boolean | ransacked | | 0
+global | cold | const char * | occtxt | | 0
+global | cold | long | yn_number | | 0
+global | cold | struct linfo | level_info | [MAXLINFO] | 0
+global | cold | schar | tbx | | 0
+global | cold | schar | tby | | 0
+global | cold | struct multishot | m_shot | | 0
+global | cold | s_level * | sp_levchn | | 0
+global | cold | stairway | upstair | | 0
+global | cold | stairway | dnstair | | 0
+global | cold | stairway | upladder | | 0
+global | cold | stairway | dnladder | | 0
+global | cold | stairway | sstairs | | 0
+global | cold | dest_area | updest | | 0
+global | cold | dest_area | dndest | | 0
+global | cold | coord | inv_pos | | 0
+global | cold | boolean | defer_see_monsters | | 0
+global | cold | boolean | in_mklev | | 0
+global | cold | boolean | stoned | | 0
+global | cold | boolean | unweapon | | 0
+global | cold | boolean | mrg_to_wielded | | 0
+global | cold | boolean | in_steed_dismounting | | 0
+global | cold | boolean | has_strong_rngseed | | 0
+global | cold | coord | doors | [DOORMAX] | 0
+global | cold | struct mkroom | rooms | [(MAXNROFROOMS + 1) * 2] | 0
+global | cold | struct mkroom * | subrooms | | 0
+global | cold | struct mkroom * | upstairs_room | | 0
+global | cold | struct mkroom * | dnstairs_room | | 0
+global | cold | struct mkroom * | sstairs_room | | 0
+global | cold | dlevel_t | level | | 0
+global | cold | time_t | ubirthday | | 0
+global | cold | schar | lastseentyp | [COLNO][ROWNO] | 0
+global | cold | struct obj * | uwep | | 0
+global | cold | struct obj * | uarm | | 0
+global | cold | struct obj * | uswapwep | | 0
+global | cold | struct obj * | uquiver | | 0
+global | cold | struct obj * | uarmu | | 0
+global | cold | struct obj * | uskin | | 0
+global | cold | struct obj * | uarmc | | 0
+global | cold | struct obj * | uarmh | | 0
+global | cold | struct obj * | uarms | | 0
+global | cold | struct obj * | uarmg | | 0
+global | cold | struct obj * | uarmf | | 0
+global | cold | struct obj * | uamul | | 0
+global | cold | struct obj * | uright | | 0
+global | cold | struct obj * | uleft | | 0
+global | cold | struct obj * | ublindf | | 0
+global | cold | struct obj * | uchain | | 0
+global | cold | struct obj * | uball | | 0
+global | cold | struct obj * | current_wand | | 0
+global | cold | struct obj * | thrownobj | | 0
+global | cold | struct obj * | kickedobj | | 0
+global | cold | struct spell | spl_book | [MAXSPELL + 1] | 0
+global | cold | long | wailmsg | | 0
+global | cold | struct obj * | billobjs | | 0
+global | cold | char | dogname | [PL_PSIZ] | 0
+global | cold | char | catname | [PL_PSIZ] | 0
+global | cold | char | horsename | [PL_PSIZ] | 0
+global | cold | char | preferred_pet | | 0
+global | cold | struct monst * | mydogs | | 0
+global | cold | struct monst * | migrating_mons | | 0
+global | cold | struct autopickup_exception * | apelist | | 0
+global | cold | struct mvitals | mvitals | [NUMMONS] | 0
+global | cold | long | domove_attempting | | 0
+global | cold | long | domove_succeeded | | 0
+global | cold | struct menucoloring * | menu_colorings | | 0
+global | cold | winid | WIN_MESSAGE | | 1
+global | cold | winid | WIN_STATUS | | 1
+global | cold | winid | WIN_MAP | | 1
+global | cold | winid | WIN_INVEN | | 1
+global | cold | char | toplines | [TBUFSZ] | 0
+global | cold | struct tc_gbl_data | tc_gbl_data | | 0
+global | cold | char * | fqn_prefix | [PREFIX_COUNT] | 0
+global | cold | struct savefile_info | sfcap | | 1
+global | cold | struct savefile_info | sfrestinfo | | 0
+global | cold | struct savefile_info | sfsaveinfo | | 1
+global | cold | struct plinemsg_type * | plinemsg_types | | 0
+global | cold | unsigned | nhUse_dummy | | 0
+options.c | cold | short | n_menu_mapped | | 0
+attrib.c | cold | char | from_what_buf | [256] | 0   # BUFSZ; from_what() return buffer
+global | cold | struct cmd | Cmd | | 0
+cmd.c | cold | short | en_win | | 0        # fixup: WIN_ERR
+cmd.c | cold | boolean | en_via_menu | | 0
+botl.c | cold | char | strength_buf | [32] | 0
+botl.c | cold | unsigned long | cond_hilites | [21] | 0  # BL_ATTCLR_MAX
+botl.c | cold | int | now_or_before_idx | | 0
+botl.c | cold | int | status_hilite_str_id | | 0
+botl.c | cold | char | blstats_initalready | | 0
+botl.c | cold | void * | status_hilite_str_p | | 0
+sp_lev.c | cold | int | min_rx | | 0
+sp_lev.c | cold | int | max_rx | | 0
+sp_lev.c | cold | int | min_ry | | 0
+sp_lev.c | cold | int | max_ry | | 0
+sp_lev.c | cold | char | splev_map | [COLNO][ROWNO] | 0
+sp_lev.c | cold | schar | xstart | | 0
+sp_lev.c | cold | schar | ystart | | 0
+sp_lev.c | cold | char | xsize | | 0
+sp_lev.c | cold | char | ysize | | 0
+sp_lev.c | cold | char * | lev_message | | 0
+sp_lev.c | cold | void * | lregions_p | | 0
+sp_lev.c | cold | int | num_lregions | | 0
+sp_lev.c | cold | boolean | splev_init_present | | 0
+sp_lev.c | cold | boolean | icedpools | | 0
+sp_lev.c | cold | int | container_idx | | 0
+sp_lev.c | cold | struct obj * | container_obj | [10] | 0
+sp_lev.c | cold | struct monst * | invent_carrying_monster | | 0
+sp_lev.c | cold | int | mines_prize_count | | 0
+sp_lev.c | cold | int | soko_prize_count | | 0
+sp_lev.c | cold | schar | floodfillchk_match_under_typ | | 0
+mkmaze.c | cold | void * | bbubbles | | 0
+mkmaze.c | cold | void * | ebubbles | | 0
+mkmaze.c | cold | boolean | movebubbles_up | | 0
+mkmaze.c | cold | int | water_xmin | | 0
+mkmaze.c | cold | int | water_ymin | | 0
+mkmaze.c | cold | int | water_xmax | | 0
+mkmaze.c | cold | int | water_ymax | | 0
+mkmaze.c | cold | struct trap * | wportal | | 0
+display.c | cold | int | bad_count | [36] | 0    # MAX_TYPE
+display.c | cold | void * | tglyph_p | | 0
+display.c | cold | schar | swallowed_lastx | | 0
+display.c | cold | schar | swallowed_lasty | | 0
+display.c | cold | schar | under_water_lastx | | 0
+display.c | cold | schar | under_water_lasty | | 0
+display.c | cold | boolean | under_water_dela | | 0
+display.c | cold | boolean | under_ground_dela | | 0
+invent.c | cold | int | lastinvnr | | 0    # fixup: 51
+invent.c | cold | unsigned | sortlootmode | | 0
+invent.c | cold | int | cached_pickinv_win | | 0   # fixup: WIN_ERR
+invent.c | cold | int | this_type | | 0
+invent.c | cold | unsigned | invbufsiz | | 0
+invent.c | cold | schar | only_x | | 0
+invent.c | cold | schar | only_y | | 0
+invent.c | cold | char | safeq_xprn_let | | 0
+invent.c | cold | boolean | safeq_xprn_dot | | 0
+invent.c | cold | char | armcat | [8] | 0
+invent.c | cold | char | li | [256] | 0     # BUFSZ
+invent.c | cold | char | altbuf | [256] | 0 # BUFSZ
+windows.c | cold | void * | last_winchoice | | 0
+windows.c | cold | boolean | status_activefields | [23] | 0  # MAXBLSTATS
+windows.c | cold | const char * | status_fieldfmt | [23] | 0
+windows.c | cold | const char * | status_fieldnm | [23] | 0
+windows.c | cold | char * | status_vals | [23] | 0
+wintty.c | cold | int | base_window | | 0
+wintty.c | cold | char | compress_cbuf | [256] | 0
+wintty.c | cold | int | hpbar_color | | 0
+wintty.c | cold | int | hpbar_percent | | 0
+wintty.c | cold | unsigned long * | tty_colormasks | | 0
+wintty.c | cold | long | tty_condition_bits | | 0
+wintty.c | cold | int | tty_nhgetch_nesting | | 0
+topl.c | cold | boolean | initd | | 0
+topl.c | cold | int | nxtidx | | 0
+getline.c | cold | boolean | suppress_history | | 0
+wintty.c | cold | struct WinDesc * | wins | [20] | 0    # MAXWIN
+wintty.c | cold | struct DisplayDesc * | ttydisplay | | 0
+wintty.c | cold | char | morc | | 0
+files.c | cold | char | savef | [45] | 0
+files.c | cold | char | bones | [16] | 0
+files.c | cold | char * | config_section_chosen | | 0
+files.c | cold | char * | config_section_current | | 0
+files.c | cold | char | fqn_fname | [2048] | 0
+files.c | cold | int | lockptr | | 0
+files.c | cold | char | wizkit | [128] | 0
+shk.c | cold | long | pickmovetime | | 0
+shk.c | cold | char | empty_shops | [5] | 0
+muse.c | cold | boolean | m_using | | 0
+muse.c | cold | int | trapx | | 0
+muse.c | cold | int | trapy | | 0
+muse.c | cold | boolean | zap_oseen | | 0
+pickup.c | cold | boolean | abort_looting | | 0
+pickup.c | cold | boolean | autopick_costly | | 0
+pickup.c | cold | boolean | bucx_filter | | 0
+pickup.c | cold | boolean | class_filter | | 0
+pickup.c | cold | struct obj * | current_container | | 0
+pickup.c | cold | int | encumber_msg_oldcap | | 0
+pickup.c | cold | boolean | shop_filter | | 0
+pickup.c | cold | long | val_for_n_or_more | | 0
+pickup.c | cold | char | valid_menu_classes | [24] | 0
+pickup.c | cold | int | vmc_count | | 0
+hack.c | cold | void * | tmp_anything_p | | 0
+do_name.c | cold | char | dxdy_buf | [30] | 0
+do_name.c | cold | char | rndmonnam_buf | [256] | 0
+do_name.c | cold | int | gloc_filter_match_glyph | | 0
+do_name.c | cold | void * | gloc_filter_map_p | | 0
+do_name.c | cold | int | mbuf_idx | | 0
+do_name.c | cold | char | mbufs | [5 * 256] | 0
+do_name.c | cold | int | via_naming | | 0
+trap.c | cold | char | tnbuf | [12] | 0
+drawing.c | cold | int | currentgraphics | | 0
+files.c | cold | char | lock | [46] | 0   # PL_NSIZ+14; cross-TU via decl.h macro
+global | cold | boolean | restoring | | 0
+global | cold | boolean | notonhead | | 0
+global | cold | unsigned long | nle_seeds | [3] | 0
+global | cold | short | nle_hero_path | [256] | 0
+global | cold | int | nle_hero_path_n | | 0
+rumors.c | cold | int | oracle_flg | | 0
+rumors.c | cold | unsigned | oracle_cnt | | 0
+rumors.c | cold | long | true_rumor_size | | 0
+artifact.c | cold | schar | artidisco | [33] | 0
+artifact.c | cold | boolean | artiexist | [35] | 0
+artifact.c | cold | int | nesting | | 0
+artifact.c | cold | char | resbuf | [20] | 0
+artifact.c | cold | int | mkot_trap_warn_count | | 0
+artifact.c | cold | int | spec_dbon_applies | | 0
+artifact.c | cold | boolean | touch_blasted | | 0
+apply.c | cold | int | jumping_is_magic | | 0
+apply.c | cold | int | polearm_range_max | | 0
+apply.c | cold | int | polearm_range_min | | 0
+save.c | cold | void * | bw_file | | 0
+save.c | cold | int | bwritefd | | 0
+save.c | cold | boolean | compressing | | 0
+save.c | cold | int | count_only | | 0
+save.c | cold | unsigned char | outbuf | [256] | 0
+save.c | cold | unsigned short | outbufp | | 0
+save.c | cold | short | outrunlength | | 0
+save.c | cold | const char * | procs_name | | 0
+save.c | cold | void (*{NAME})(int) | procs_bclose | | 0
+save.c | cold | void (*{NAME})(int) | procs_bflush | | 0
+save.c | cold | void (*{NAME})(int) | procs_bufoff | | 0
+save.c | cold | void (*{NAME})(int) | procs_bufon | | 0
+save.c | cold | void (*{NAME})(int, void *, unsigned int) | procs_bwrite | | 0
+save.c | cold | unsigned | usteed_id | | 0
+save.c | cold | unsigned | ustuck_id | | 0
+role.c | cold | char | pa | [4] | 0
+role.c | cold | int | post_attribs | | 0
+lock.c | cold | struct nh_xlock | xlock | | 0
+restore.c | cold | void * | id_map_p | | 0
+restore.c | cold | int | n_ids_mapped | | 0
+restore.c | cold | struct fruit * | oldfruit | | 0
+restore.c | cold | long | omoves | | 0
+restore.c | cold | int | procs_mread_flags | | 0
+restore.c | cold | const char * | procs_name | | 0
+restore.c | cold | void (*{NAME})(int) | procs_bclose | | 0
+restore.c | cold | void (*{NAME})(void) | procs_minit | | 0
+restore.c | cold | void (*{NAME})(int, void *, unsigned int) | procs_mread | | 0
+restore.c | cold | unsigned char | zc_inbuf | [256] | 0
+restore.c | cold | short | zc_inrunlength | | 0
+restore.c | cold | int | zc_mreadfd | | 0
+hacklib.c | cold | char | ing_suffix_buf | [256] | 0   # BUFSZ
+hacklib.c | cold | char | datestr | [15] | 0
+hacklib.c | cold | int | visctrl_nbuf | | 0
+hacklib.c | cold | char | visctrl_bufs | [5][5] | 0
+role.c | cold | struct Role | urole_store | | 0    # accessor 'urole' in you.h
+role.c | cold | struct Race | urace_store | | 0    # accessor 'urace' in you.h
+eat.c | cold | boolean | force_save_hs | | 0
+eat.c | cold | char | msgbuf | [256] | 0
+eat.c | cold | long | ate_brains | | 0
+eat.c | cold | unsigned | newuhs_save_hs | | 0
+eat.c | cold | boolean | newuhs_saved_hs | | 0
+potion.c | cold | int | nothing | | 0
+potion.c | cold | int | unkn | | 0
+do.c | cold | char | at_ladder | | 0
+do.c | cold | char * | dfr_post_msg | | 0
+do.c | cold | char * | dfr_pre_msg | | 0
+do.c | cold | char | dowipe_buf | [39] | 0
+do.c | cold | d_level | save_dlevel_store | | 0
+questpgr.c | cold | char | cvt_buf | [64] | 0
+questpgr.c | cold | char | nambuf | [64] | 0
+questpgr.c | cold | void * | msg_file_p | | 0
+pline.c | cold | unsigned | pline_flags | | 0
+pline.c | cold | int | in_pline | | 0
+pline.c | cold | char | prevmsg | [256] | 0
+mon.c | cold | int | animal_list_count | | 0
+mon.c | cold | long | elemental_clog_msgmv | | 0
+mon.c | cold | boolean | vamp_rise_msg | | 0
+mhitm.c | cold | int | dieroll | | 0
+mhitm.c | cold | boolean | far_noise | | 0
+mhitm.c | cold | struct obj * | otmp | | 0
+mhitm.c | cold | long | noisetime | | 0
+mhitm.c | cold | boolean | vis | | 0
+spell.c | cold | int | sortmode | | 0
+makemon.c | cold | void * | align_shift_lev_p | | 0
+makemon.c | cold | long | align_shift_oldmoves | | 0
+end.c | cold | int | vanq_sortmode | | 0
+nlernd.c | cold | isaac64_ctx | lgen_base | | 0
+nlernd.c | cold | isaac64_ctx | lgen_state | [8] | 0   # NLE_NUM_DUNGEONS
+nlernd.c | cold | isaac64_ctx | core_state | | 0
+nlernd.c | cold | int | lgen_initialised | | 0
+nlernd.c | cold | int | lgen_active | | 0
+region.c | cold | int | max_regions | | 0
+worm.c | cold | struct wseg * | wheads | [32] | 0
+worm.c | cold | struct wseg * | wtails | [32] | 0
+worm.c | cold | long | wgrowtime | [32] | 0
+dungeon.c | cold | void * | branches_p | | 0
+dungeon.c | cold | int | branch_id_ctr | | 0
+dungeon.c | cold | void * | mapseenchn_p | | 0
+mklev.c | cold | char | made_branch | | 0
+mklev.c | cold | schar | vault_x | | 0
+mklev.c | cold | schar | vault_y | | 0
+rect.c | cold | int | rect_cnt | | 0
+mthrowu.c | cold | int | mesg_given | | 0
+mthrowu.c | cold | struct monst * | archer | | 0
+mthrowu.c | cold | struct monst * | target | | 0
+drawing.c | cold | struct symsetentry | symset_store | [2] | 0    # NUM_GRAPHICS
+drawing.c | cold | nhsym | primary_syms | [SYM_MAX] | 0
+drawing.c | cold | nhsym | rogue_syms | [SYM_MAX] | 0
+drawing.c | cold | nhsym | ov_primary_syms | [SYM_MAX] | 0
+drawing.c | cold | nhsym | ov_rogue_syms | [SYM_MAX] | 0
+drawing.c | cold | nhsym | warnsyms | [6] | 0    # WARNCOUNT
+mkmap.c | cold | int | n_loc_filled | | 0
+steal.c | cold | unsigned | stealmid | | 0
+steal.c | cold | unsigned | stealoid | | 0
+pray.c | cold | schar | p_aligntyp | | 0
+pray.c | cold | int | p_trouble | | 0
+pray.c | cold | int | p_type | | 0
+zap.c | cold | boolean | obj_zapped | | 0
+zap.c | cold | int | poly_zapped | | 0
+uhitm.c | cold | boolean | cleave_clockwise | | 0
+uhitm.c | cold | char | msgbuf | [256] | 0
+teleport.c | cold | struct obj * | telescroll | | 0
+polyself.c | cold | int | sex_change_ok | | 0
+read.c | cold | void * | gremlins_p | | 0
+read.c | cold | boolean | known | | 0
+ball.c | cold | void * | bcp_p | | 0
+ball.c | cold | void * | bcu_p | | 0
+ball.c | cold | int | bcrestriction | | 0
+dig.c | cold | boolean | did_dig_msg | | 0
+dbridge.c | cold | char | wholebuf | [80] | 0
+dbridge.c | cold | void * | occupants_p | | 0
+do_wear.c | cold | char | offdelaybuf | [60] | 0
+do_wear.c | cold | boolean | initial_don | | 0
+dog.c | cold | int | petname_used | | 0
+o_init.c | cold | short | disco | [NUM_OBJECTS] | 0
+objnam.c | cold | char | obufs | [12][256] | 0    # NUMOBUF x BUFSZ
+topten.c | cold | long | final_fpos | | 0
+topten.c | cold | void * | tt_buf_p | | 0
+topten.c | cold | int | toptenwin | | 0
+topten.c | cold | void * | tt_head_p | | 0
+extralev.c | cold | void * | r_p | | 0
+mapglyph.c | cold | char | encbuf | [20] | 0
+mkobj.c | cold | char | unknown | [32] | 0
+mkobj.c | cold | void * | obj_pool | | 0
+priest.c | cold | char | piousness_buf | [32] | 0
+dothrow.c | cold | long | breakobj_lastmovetime | | 0
+dothrow.c | cold | boolean | breakobj_peaceful_shk | | 0
+options.c | cold | const char * | opt_intro | [10] | 0    # seeded from template at use
+options.c | cold | char | fmtstr_doset | [24] | 0         # fixup: "%s%-15s [%s]   "
+options.c | cold | boolean | made_fmtstr | | 0
+global | cold | struct symsetentry * | symset_list | | 0
+sp_lev.c | cold | aligntyp | ralign | [3] | 0   # fixup: {AM_CHAOTIC, AM_NEUTRAL, AM_LAWFUL}
+cmd.c | cold | char | travelcmd | [2] | 0
+hacklib.c | cold | char | s_suffix_buf | [256] | 0   # BUFSZ
+hacklib.c | cold | char | sitoa_buf | [13] | 0
+mkroom.c | cold | coord | shrine_buf | | 0
+options.c | cold | char | mapped_menu_cmds | [33] | 0   # MAX_MENU_MAPPED_CMDS+1
+files.c | cold | boolean | chosen_symset_start | | 0
+files.c | cold | boolean | chosen_symset_end | | 0
+dlb.c | cold | boolean | initialized | | 0
+global | cold | unsigned long | nh_fobj_generation | | 0
+global | cold | int | nh_fobj_valid | | 0
+global | cold | int | nh_fobj_count | | 0
+global | cold | int | nh_fobj_lo | | 0
+global | hot | unsigned long | nh_invgen | | 0
+global | hot | unsigned long | nh_hgold_gen | | 0
+global | hot | long | nh_hgold_val | | 0
+global | hot | unsigned long | nh_leash_gen | | 0
+global | hot | unsigned char | nh_hgold_valid | | 0
+global | hot | unsigned char | nh_leash_valid | | 0
+global | hot | unsigned char | nh_leash_cnt | | 0
+global | hot | unsigned char | nh_deepest_valid | | 0
+global | hot | schar | nh_deepest_val | [2] | 0
+global | cold | schar | nh_fobj_x | [2048] | 0
+global | cold | schar | nh_fobj_y | [2048] | 0
+global | cold | struct obj * | nh_fobj_ptr | [2048] | 0
+global | cold | unsigned char | nh_no_hero_gold | | 0
+allmain.c | cold | int | moveloop_change | | 0   # hand-added to nh_ctx_gen.h (generated files carry hand edits)

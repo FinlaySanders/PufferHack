@@ -1,0 +1,21 @@
+dgn_flex.c
+lev_flex.c
+tiletxt.c
+makedefs
+dgn_comp
+lev_comp
+dlb
+dlb_main
+recover
+tilemap
+tileedit
+tile2x11
+tile2bmp
+tile2beos
+gif2txt
+txt2ppm
+tile2img.ttp
+xpm2ppm.ttp
+# dev tool for analyzing data collected by nethack's #define MONITOR_HEAP
+heaputil
+heaputil.c
