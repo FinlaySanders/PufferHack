@@ -3,6 +3,8 @@
 #include "nlernd.h"
 #include "pufferhack.h"
 
+#undef settings /* nle.h's current-game accessor; this file names a game's settings explicitly */
+
 int nle_in_getpos(nle_ctx_t *);
 long nle_shop_price(nle_ctx_t *);
 int nle_inside_shop(nle_ctx_t *);
@@ -30,6 +32,57 @@ _Static_assert(PH_BLSTATS_SIZE == NLE_BLSTATS_SIZE && PH_INTERNAL_SIZE == NLE_IN
                && PH_ROWS == ROWNO && PH_COLS == COLNO - 1, "sizes");
 
 #define G(g) ((nle_ctx_t *) (g))
+
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+/* a fresh writable directory as a fresh copy of build/dat has: empty record, logfile, xlogfile and perm, and save/ */
+static int
+make_vardir(char *dir, size_t cap)
+{
+    static const char *const files[] = { "record", "logfile", "xlogfile", "perm" };
+    const char *base = getenv("TMPDIR");
+    char path[4200];
+
+    if (!base || !*base)
+        base = access("/dev/shm", W_OK) == 0 ? "/dev/shm" : "/tmp";
+    if (snprintf(dir, cap, "%s/pufferhack-XXXXXX", base) >= (int) cap || !mkdtemp(dir))
+        return 0;
+    for (size_t i = 0; i < sizeof files / sizeof *files; i++) {
+        FILE *f;
+
+        snprintf(path, sizeof path, "%s/%s", dir, files[i]);
+        if (!(f = fopen(path, "w")))
+            return 0;
+        fclose(f);
+    }
+    snprintf(path, sizeof path, "%s/save", dir);
+    return mkdir(path, 0700) == 0;
+}
+
+/* the directory make_vardir made: its files and save/'s files (bones, saves), then the two directories */
+static void
+remove_vardir(const char *dir)
+{
+    char sub[4200], path[4300];
+
+    for (int pass = 0; pass < 2; pass++) {
+        const char *d = pass ? dir : (snprintf(sub, sizeof sub, "%s/save", dir), sub);
+        DIR *h = opendir(d);
+        struct dirent *e;
+
+        if (!h)
+            continue;
+        while ((e = readdir(h)))
+            if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) {
+                snprintf(path, sizeof path, "%s/%s", d, e->d_name);
+                unlink(path);
+            }
+        closedir(h);
+        rmdir(d);
+    }
+}
 
 void
 ph_config_default(ph_config *cfg)
@@ -59,6 +112,8 @@ ph_start(ph_obs *obs, FILE *ttyrec, const ph_config *cfg)
         return 0;
     if (cfg->data_dir && copy(s->hackdir, sizeof s->hackdir, cfg->data_dir)
         && (!cfg->wizkit || copy(s->wizkit, sizeof s->wizkit, cfg->wizkit))
+        && (cfg->var_dir ? copy(s->vardir, sizeof s->vardir, cfg->var_dir)
+                         : (s->vardir_owned = make_vardir(s->vardir, sizeof s->vardir)))
         && (cfg->options ? copy(s->options, sizeof s->options, cfg->options)
                          : !cfg->options_file
                                || snprintf(s->options, sizeof s->options, "@%s", cfg->options_file)
@@ -76,13 +131,25 @@ ph_start(ph_obs *obs, FILE *ttyrec, const ph_config *cfg)
         s->skip_gamelogs = cfg->skip_gamelogs != 0;
         g = nle_start((nle_obs *) obs, ttyrec, s);
     }
+    if (!g && s->vardir_owned)
+        remove_vardir(s->vardir);
     free(s);
     return (ph_game *) g;
 }
 
 ph_game *ph_step(ph_game *game, ph_obs *obs) { return (ph_game *) nle_step(G(game), (nle_obs *) obs); }
 ph_game *ph_refresh(ph_game *game, ph_obs *obs) { return (ph_game *) nle_obs_refresh(G(game), (nle_obs *) obs); }
-void ph_end(ph_game *game) { nle_end(G(game)); }
+void
+ph_end(ph_game *game)
+{
+    char dir[sizeof G(game)->settings.vardir];
+    int owned = G(game)->settings.vardir_owned;
+
+    memcpy(dir, G(game)->settings.vardir, sizeof dir);
+    nle_end(G(game));
+    if (owned)
+        remove_vardir(dir);
+}
 int ph_in_getpos(ph_game *game) { return nle_in_getpos(G(game)); }
 
 void ph_set_seed(ph_game *game, unsigned long core, unsigned long disp, int reseed, unsigned long lgen)

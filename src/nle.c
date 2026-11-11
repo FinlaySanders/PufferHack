@@ -367,18 +367,29 @@ mainloop(fcontext_transfer_t ctx_transfer)
         settings.hackdir[len] = '\0';
     }
 
+    char *vardir = settings.hackdir;
+    len = strnlen(settings.vardir, sizeof(settings.vardir));
+    if (len) {
+        if (len >= sizeof(settings.vardir) - 1) {
+            error("vardir too long");
+            return;
+        }
+        if (settings.vardir[len - 1] != '/')
+            settings.vardir[len] = '/', settings.vardir[len + 1] = '\0';
+        vardir = settings.vardir;
+    }
     char *scoreprefix = (settings.scoreprefix[0] != '\0')
                             ? settings.scoreprefix
-                            : settings.hackdir;
+                            : vardir;
     fqn_prefix[SYSCONFPREFIX] = settings.hackdir;
     fqn_prefix[CONFIGPREFIX] = settings.hackdir;
     fqn_prefix[HACKPREFIX] = settings.hackdir;
-    fqn_prefix[SAVEPREFIX] = settings.hackdir;
-    fqn_prefix[LEVELPREFIX] = settings.hackdir;
-    fqn_prefix[BONESPREFIX] = settings.hackdir;
+    fqn_prefix[SAVEPREFIX] = vardir;
+    fqn_prefix[LEVELPREFIX] = vardir;
+    fqn_prefix[BONESPREFIX] = vardir;
     fqn_prefix[SCOREPREFIX] = scoreprefix;
-    fqn_prefix[LOCKPREFIX] = settings.hackdir;
-    fqn_prefix[TROUBLEPREFIX] = settings.hackdir;
+    fqn_prefix[LOCKPREFIX] = vardir;
+    fqn_prefix[TROUBLEPREFIX] = vardir;
     fqn_prefix[DATAPREFIX] = settings.hackdir;
 
     char *argv[1] = { "nethack" };
@@ -646,7 +657,9 @@ nle_settings_copy(nle_settings *d, const nle_settings *s)
         size_t n_ = strnlen(s->f, sizeof s->f);                           \
         memcpy(d->f, s->f, n_ < sizeof s->f ? n_ + 1 : n_);               \
     } while (0)
-    _Static_assert(offsetof(nle_settings, true_glyphs) + sizeof(bool) + sizeof(unsigned long) > sizeof(nle_settings)
+    _Static_assert(offsetof(nle_settings, vardir) + sizeof(((nle_settings *) 0)->vardir) + sizeof(unsigned long) > sizeof(nle_settings)
+                       && offsetof(nle_settings, vardir) > offsetof(nle_settings, vardir_owned)
+                       && offsetof(nle_settings, vardir_owned) > offsetof(nle_settings, true_glyphs)
                        && offsetof(nle_settings, true_glyphs) > offsetof(nle_settings, skip_gamelogs)
                        && offsetof(nle_settings, skip_gamelogs) > offsetof(nle_settings, time_seed_is_set)
                        && offsetof(nle_settings, initial_seeds) + sizeof(nle_seeds_init_t) <= offsetof(nle_settings, fix_moon_phase),
@@ -656,6 +669,7 @@ nle_settings_copy(nle_settings *d, const nle_settings *s)
     NLE_SET_STR(options);
     NLE_SET_STR(wizkit);
     NLE_SET_STR(ttyrecname);
+    NLE_SET_STR(vardir);
 #undef NLE_SET_STR
     d->spawn_monsters = s->spawn_monsters;
     d->underfoot_glyphs = s->underfoot_glyphs;
@@ -665,6 +679,7 @@ nle_settings_copy(nle_settings *d, const nle_settings *s)
     d->time_seed_is_set = s->time_seed_is_set;
     d->skip_gamelogs = s->skip_gamelogs;
     d->true_glyphs = s->true_glyphs;
+    d->vardir_owned = s->vardir_owned;
 }
 
 nle_ctx_t *

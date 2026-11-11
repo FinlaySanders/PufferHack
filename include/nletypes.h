@@ -154,6 +154,10 @@ typedef struct nle_settings {
     bool skip_gamelogs;
     /* discovered types show their true glyphs on the map */
     bool true_glyphs;
+    /* bool: vardir was made for this game and goes with it (ph_start/ph_end) */
+    bool vardir_owned;
+    /* the game's writable files (record, logfile, xlogfile, saves, bones, locks); empty: hackdir */
+    char vardir[4096];
 
 } nle_settings;
 

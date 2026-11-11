@@ -82,7 +82,9 @@ typedef struct ph_obs {
 } ph_obs;
 
 typedef struct ph_config {
-    const char *data_dir;       /* game data: a writable copy of build/dat (the game writes record, logfile, save) */
+    const char *data_dir;       /* game data (build/dat), only read; many games can share it */
+    const char *var_dir;        /* writable files (record, logfile, xlogfile, saves, bones): NULL gives each game a
+                                   private directory removed by ph_end; set it to keep the record across games */
     const char *options;        /* NetHack options, "name:Agent,role:Val,..." (NETHACKOPTIONS format) */
     const char *options_file;   /* or a NetHack options file; used when options is NULL */
     const char *wizkit;         /* wizard-mode starting items, or NULL */

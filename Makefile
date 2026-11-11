@@ -135,9 +135,13 @@ verify: all
 
 test: all
 	rm -rf $(BUILD)/test && mkdir -p $(BUILD)/test && cp -r $(BUILD)/dat $(BUILD)/test/hack
-	printf 'OPTIONS=name:Agent,role:Val,race:human,gender:female,align:neutral,!autopickup,nobones,nolegacy\n' > $(BUILD)/test/nhrc
+	printf 'OPTIONS=name:Agent,role:Val,race:human,gender:female,align:neutral,!autopickup,nobones,nolegacy,disclose:-i -a -v -g -c -o\n' > $(BUILD)/test/nhrc
 	$(CC) -O1 -Wall -Wextra -Iinclude -o $(BUILD)/test/smoke tests/smoke.c -L$(BUILD) -lnethack -Wl,-rpath,$(abspath $(BUILD))
-	$(BUILD)/test/smoke $(BUILD)/test/hack $(BUILD)/test/nhrc
+	touch $(BUILD)/test/stamp && ls -d $${TMPDIR:-/dev/shm}/pufferhack-* 2>/dev/null | sort > $(BUILD)/test/vardirs.before; true
+	TMPDIR= $(BUILD)/test/smoke $(abspath $(BUILD))/dat $(BUILD)/test/nhrc
+	test -z "$$(find $(BUILD)/dat -newer $(BUILD)/test/stamp)" || { echo "FAIL: the game wrote into the data directory"; exit 1; }
+	ls -d /dev/shm/pufferhack-* /tmp/pufferhack-* 2>/dev/null | sort | comm -13 $(BUILD)/test/vardirs.before - | \
+	  { ! grep . || { echo "FAIL: a private game directory was left behind"; exit 1; }; }
 	printf 'OPTIONS=name:Agent,role:Val,race:human,gender:female,align:neutral,nosuchoption\n' > $(BUILD)/test/badrc
 	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/badoptions tests/badoptions.c -L$(BUILD) -lnethack \
 	  -Wl,-rpath,$(abspath $(BUILD))
