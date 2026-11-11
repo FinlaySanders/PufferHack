@@ -3,7 +3,7 @@
 # certify.sh --corpus SPEC --lib LIBDIR [--dat DIR] [--ref LIB] [--stock-dat DIR] [--bind-all] [--jobs N] [--fork-jobs N] [--out DIR]
 #            [--controls N] [--rerun-cap N] [--fresh FRACTION] [--urandom-fixed] [--phv NAME] [--ref-any] [--no-hash] [--keep]
 #            [--stock-digest SO] [--refs FILE] [--known FILE] [--aborts FILE] (pin files other than this checkout's are noted)
-# The digest-first stock differential (README.md): every game of SPEC on the engine library (LIBDIR/libnethack.so, which exports
+# The digest-first stock differential (README.md): every game of SPEC on the engine library (LIBDIR/libpufferhack.so, which exports
 # ph_digest; game data LIBDIR/dat) and on untouched stock NLE 0.9.0 (stock/build.sh's reference), one process per core on each
 # side, games back to back; per-key digests folded into per-game chains and compared; a game that differs is rerun key by key
 # on both sides (streamed, nothing stored; up to --rerun-cap games, default 500, the rest classed from the chains) and dumped as
@@ -27,7 +27,7 @@ V=$(cd "$(dirname "$0")" && pwd); BIN=$V/build; CD=${CORPORA_DATA:-$V/corpora/da
 
 if [ "$1" = quick ] || [ "$1" = full ]; then
   TIER=$1; L=$2; shift 2
-  [ -n "$L" ] && [ -f "$L/libnethack.so" ] || { echo "usage: certify.sh quick|full LIBDIR [--jobs N] [--out DIR] [--ref-any]" >&2; exit 2; }
+  [ -n "$L" ] && [ -f "$L/libpufferhack.so" ] || { echo "usage: certify.sh quick|full LIBDIR [--jobs N] [--out DIR] [--ref-any]" >&2; exit 2; }
   L=$(cd "$L" && pwd); OUT=; PASS_ON=()
   while [ $# -gt 0 ]; do case $1 in
     --out) OUT=$2; shift 2;; --jobs) PASS_ON+=(--jobs "$2"); shift 2;; --ref-any) PASS_ON+=(--ref-any); shift;;
@@ -63,7 +63,7 @@ if [ "$1" = quick ] || [ "$1" = full ]; then
     printf 'run     %-18s %-4s %s: %s\n' "$N" "$OK" "${RES:-NONE}" "${ST:-see $OUT/$N.log}" | tee -a "$OUT/summary.txt"
   done
   RES=$([ $NF = 0 ] && echo PASS || echo FAIL)
-  echo "result  $TIER $RES: $((${#RUNS[@]} - NF))/${#RUNS[@]} runs as expected, ${L}/libnethack.so $(sha256sum < "$L/libnethack.so" | cut -c1-16) ($OUT) in $(($(date +%s) - T0)) s" | tee -a "$OUT/summary.txt"
+  echo "result  $TIER $RES: $((${#RUNS[@]} - NF))/${#RUNS[@]} runs as expected, ${L}/libpufferhack.so $(sha256sum < "$L/libpufferhack.so" | cut -c1-16) ($OUT) in $(($(date +%s) - T0)) s" | tee -a "$OUT/summary.txt"
   [ $RES = PASS ]; exit $?
 fi
 
@@ -81,7 +81,7 @@ while [ $# -gt 0 ]; do case $1 in
 [ -n "$SPEC" ] && [ -n "$LIB" ] || { echo "usage: certify.sh --corpus SPEC --lib LIBDIR ... | certify.sh quick|full LIBDIR (see the header)" >&2; exit 2; }
 [ -n "${PHV_FAULT+x}${PHV_POKE+x}" ] && { echo "certify.sh: PHV_FAULT / PHV_POKE are set in the environment; controls are planted by this script only" >&2; exit 2; }
 LIB=$(cd "$LIB" && pwd) || exit 2; DAT=$(realpath -m "${DAT:-$LIB/dat}"); REF=$(realpath -m "$REF"); SDAT=$(realpath -m "$SDAT"); SDIG=$(realpath -m "$SDIG"); P=$BIN/$PHV
-for f in "$P" "$SDIG" "$REF" "$LIB/libnethack.so"; do
+for f in "$P" "$SDIG" "$REF" "$LIB/libpufferhack.so"; do
   [ -e "$f" ] || { echo "certify.sh: $f missing (make -C verify; make -C verify stock)" >&2; exit 2; }; done
 if [ $URAND = 1 ]; then  # /dev/urandom read by both sides as a fixed seed: reseed=1 games reseed alike after nle_start
   [ -e "$BIN/urandom_fixed.so" ] || { echo "certify.sh: $BIN/urandom_fixed.so missing (make -C verify)" >&2; exit 2; }
@@ -158,7 +158,7 @@ IDS=$("$P" id --lib "$LIB" --ref "$REF" --stock-digest "$SDIG")
 FID=$(echo "$IDS" | awk '$1 == "fork" {print $2}'); SID=$(echo "$IDS" | awk '$1 == "stock" {print $2}'); AID=$(echo "$IDS" | awk '$1 == "adapter" {print $2}')
 PID=$(pin digest id); PAID=$(pin digest adapter_id); PREF=$(pin stock library_sha256); RSHA=$(sha256sum < "$REF" | cut -d' ' -f1)
 ENVL=$(env | grep -E '^(NH_|NLE_|PHV_|LD_PRELOAD|LD_LIBRARY_PATH|MALLOC_|GLIBC_TUNABLES)' | sort | tr '\n' ' ')
-say "engine  $LIB/libnethack.so $(sha $LIB/libnethack.so)$([ -s $LIB/SOURCE ] && echo " source $(cut -c1-12 $LIB/SOURCE)"), data $DAT"
+say "engine  $LIB/libpufferhack.so $(sha $LIB/libpufferhack.so)$([ -s $LIB/SOURCE ] && echo " source $(cut -c1-12 $LIB/SOURCE)"), data $DAT"
 say "stock   $REF ${RSHA:0:16}$([ "$RSHA" = "$PREF" ] && echo ' (the pinned reference)' || echo " (NOT the pinned reference ${PREF:0:16})"), data $SDAT"
 say "harness $PHV $(sha $P), phd_stock.so $(sha $SDIG), certify.sh $(sha $V/certify.sh), refs $REFS $(sha $REFS 2> /dev/null), known $(sha $KNOWN 2> /dev/null), mode $MODE"
 OVR=$(for x in "--refs $REFS $V/refs.toml" "--known $KNOWN $V/known.tsv" "--aborts $ABORTS $V/stock/aborts.tsv"; do
@@ -185,7 +185,7 @@ PASS=$?
 # its key and component, else the run is void
 CRC=4
 if [ "$CONTROLS" -gt 0 ]; then
-  CRC=3; PL=$BIN/poke/$(sha $LIB/libnethack.so)/phv_poke.so
+  CRC=3; PL=$BIN/poke/$(sha $LIB/libpufferhack.so)/phv_poke.so
   [ -s "$PL" ] || make -s -C "$V" poke LIBDIR="$LIB" POKE="$PL" > "$OUT/poke_build.log" 2>&1 || PL=
   if [ -z "$PL" ]; then say "control VOID the poke library for $LIB could not be built ($OUT/poke_build.log)"
   elif python3 -I "$V/tools/controls.py" plan "$OUT" "$CONTROLS" "$MODE" "$(cat /proc/sys/kernel/random/uuid)" | tee -a "$OUT/summary.txt"; then
@@ -200,7 +200,7 @@ if [ "$CONTROLS" -gt 0 ]; then
 fi
 RES=$([ $PASS = 0 ] && { [ $CRC = 0 ] && echo PASS || { [ $CRC = 4 ] && echo UNCONTROLLED || echo FAIL; }; } || echo FAIL)
 [ $RES = PASS ] && { [ -n "$OVR" ] || [ $REFANY = 1 ]; } && RES=UNPINNED  # overridden pins or reference: not a certificate
-python3 -I - "$OUT" "$RES" "$SPEC" "$LIB" "$REF" "$FID" "$AID" "$(sha $LIB/libnethack.so)" "${RSHA:0:16}" "$T0" "$ENVL" "$([ "$RSHA" = "$PREF" ] && echo 1 || echo 0)" <<'PY'
+python3 -I - "$OUT" "$RES" "$SPEC" "$LIB" "$REF" "$FID" "$AID" "$(sha $LIB/libpufferhack.so)" "${RSHA:0:16}" "$T0" "$ENVL" "$([ "$RSHA" = "$PREF" ] && echo 1 || echo 0)" <<'PY'
 import json, sys, time
 out, res, spec, lib, ref, fid, aid, lsha, rsha, t0, envl, pinned = sys.argv[1:13]
 s = json.load(open(out + '/summary.json'))

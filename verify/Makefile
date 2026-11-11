@@ -57,7 +57,7 @@ poke:
 	@test -n "$(LIBDIR)" -a -n "$(POKE)" || { echo "make poke LIBDIR=DIR POKE=FILE"; exit 2; }
 	@mkdir -p $(dir $(POKE))
 	$(CC) -O1 -fPIC -shared -march=x86-64-v3 $(NHDEFS) -DNH_POOL_ALLOC -DNH_TLS_INITIAL_EXEC -I$(ROOT)/include -I$(LIBDIR)/include \
-	  -I$(ROOT)/third_party/libtmt -I$(ROOT)/third_party/fcontext/include -o $(POKE).tmp src/phv_poke.c -L$(LIBDIR) -lnethack \
+	  -I$(ROOT)/third_party/libtmt -I$(ROOT)/third_party/fcontext/include -o $(POKE).tmp src/phv_poke.c -L$(LIBDIR) -lpufferhack \
 	  -Wl,--no-undefined && mv $(POKE).tmp $(POKE)
 
 clean:

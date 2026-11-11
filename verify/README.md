@@ -16,7 +16,7 @@ A build passes only when every game is identical, or ends exactly as a pinned li
 From a clean clone:
 
 ```
-make                          # the engine: build/libnethack.so and build/dat
+make                          # the engine: build/libpufferhack.so and build/dat
 make -C verify                # phv, the verifier, and the special-mode tools (verify/build)
 make -C verify stock          # the stock reference (downloads NLE 0.9.0's sdist) and the stock side of the digest
 verify/corpora/fetch.sh       # the release corpora (CORPORA_URL, or CORPORA_DIR=directory with the tarballs)
@@ -57,7 +57,7 @@ hardware thread). `--out DIR` sets where results go (default `verify/runs/`).
 - it notes when the compiler is not `compiler`.
 
 With the pinned compiler, gcc 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1), the library is byte-identical to the reference every
-earlier certification used: sha256 f0b4a412a8a3aa2f…. It installs to `stock/build/ref/` (`libnethack.so`, `nethackdir/`).
+earlier certification used: sha256 f0b4a412a8a3aa2f…. It installs to `stock/build/ref/` (`libpufferhack.so`, `nethackdir/`).
 
 With another compiler, `build.sh` reports `STOCK_DIFFERS` and still installs what it built. `certify.sh` then refuses to run
 unless you pass `--ref-any`, and its summary says the reference is not the pinned one. Earlier checks found stock's games

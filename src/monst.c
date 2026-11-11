@@ -104,7 +104,7 @@ void NDECL(monst_init);
 /* mons[] is const: role_init no longer mutates it (quest leader/nemesis
  * data is already right in the source table; see role.c), and the seduce
  * sysopt write has been dead (#if 0) since 3.6. Const puts it in rodata,
- * shared-safe across all envs in a single libnethack. */
+ * shared-safe across all envs in a single library. */
 const struct permonst mons[] = {
     /*
      * ants

@@ -3,7 +3,7 @@
  * A checkpoint is the context struct (every per-game global), the lazy slots that hold game
  * state, and the heap NetHack's own save code serializes (current level, game state, other
  * levels). Pointers in the struct and slots are stored by kind: into the struct or a copied slot
- * (offset), into libnethack (offset from its base), or into the heap (dropped; NetHack's restore
+ * (offset), into the library (offset from its base), or into the heap (dropped; NetHack's restore
  * rebuilds those, and the options/window-port fields in keep_fields keep the target's own). So a
  * checkpoint loads into any env, in this process or another. Layout tables are generated into
  * nh_ckpt_layout.c by tools/gen_ckpt_layout.py. */

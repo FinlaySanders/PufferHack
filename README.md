@@ -4,7 +4,7 @@ PufferHack is NetHack 3.6.6 for reinforcement learning, built for [PufferLib](ht
 plays the same game as stock [NLE](https://github.com/NetHack-LE/nle) 0.9.0 for the same seeds and keys, runs many games
 per process, and steps about 12x faster than NLE as it ships (7x faster than stock run one process per game).
 
-`make` builds `build/libnethack.so` and the game data with nothing but gcc and make, and `make test` runs the tests. The C
+`make` builds `build/libpufferhack.so` and the game data with nothing but gcc and make, and `make test` runs the tests. The C
 API is `include/pufferhack.h`, with a complete example in `tests/smoke.c`. PufferLib's NetHack environment builds and links
 it for you.
 

@@ -1,4 +1,4 @@
-/* Size-class pool for libnethack's own small allocations. The library links with -Wl,--wrap=malloc,free,calloc,realloc, so
+/* Size-class pool for the library's own small allocations. The library links with -Wl,--wrap=malloc,free,calloc,realloc, so
    every malloc/free reference in its objects lands here (libc and libstdc++ keep the real allocator). Blocks of up to
    NH_POOL_MAX bytes come from 64 KB chunks of a single size class, carved from one reserved address range, so a pointer's
    owner is decided by its address; a thread keeps a bounded free list per class and trades batches with a global list, so

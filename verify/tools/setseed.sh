@@ -16,7 +16,7 @@ RSHA=$(sha256sum < "$REF" | cut -d' ' -f1)
 [ "$RSHA" = "$(pin stock library_sha256)" ] || [ $REFANY = 1 ] || { say "stock   FAIL $REF is not the pinned reference"; say "result  FAIL"; exit 1; }
 IDS=$("$B/phv_seed" id --lib "$L" --ref "$REF" --stock-digest "$B/phd_stock.so" | awk '{print $2}' | sort -u | tr '\n' ' ')
 [ "$IDS" = "$(printf '%s\n' "$(pin digest id)" "$(pin digest adapter_id)" | sort -u | tr '\n' ' ')" ] || { say "digest  FAIL ids $IDS, pinned $(pin digest id) $(pin digest adapter_id)"; say "result  FAIL"; exit 1; }
-say "engine  $L/libnethack.so $(sha256sum < "$L/libnethack.so" | cut -c1-16), stock $REF ${RSHA:0:16}, phv_seed $(sha256sum < "$B/phv_seed" | cut -c1-16)"
+say "engine  $L/libpufferhack.so $(sha256sum < "$L/libpufferhack.so" | cut -c1-16), stock $REF ${RSHA:0:16}, phv_seed $(sha256sum < "$B/phv_seed" | cut -c1-16)"
 A="--lib $L --dat $L/dat --ref $REF --stock-dat $V/stock/build/ref/nethackdir --stock-digest $B/phd_stock.so"
 N=0; BAD=0
 for S in 3,1234,5678,0,0 3,9999,4321,0,0 3,1234,5678,0,77 u:3,abcdef,123,1,5; do

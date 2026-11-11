@@ -72,7 +72,7 @@ static library dlb_libs[MAX_LIBS];
 static boolean dlb_initialized_store = FALSE;
 #define dlb_initialized dlb_initialized_store
 #else
-/* libnethack: per-env open data-library handles (each env has its own
+/* the library: per-env open data-library handles (each env has its own
  * nhdat FILE*, so concurrent envs can't race on seek/read). Helpers live
  * in src/nle_dlbstate.c which can see struct nh_ctx. */
 extern library *nle_dlb_libs(void);

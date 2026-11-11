@@ -4,7 +4,7 @@
  *   phv game SIDE LOG [options]          one game: --perkey FILE (per-key records), --text-at K FILE (full text state at key K)
  *   phv cmpkey FORK.pk STOCK.pk LOG [options]   today's per-game verdict line from two per-key files
  *
- * Sides: "fork" = the engine library (--lib DIR/libnethack.so, which exports ph_digest), "stock" = untouched stock NLE 0.9.0
+ * Sides: "fork" = the engine library (--lib DIR/libpufferhack.so, which exports ph_digest), "stock" = untouched stock NLE 0.9.0
  * (--ref LIB) digested by phd_stock.so (--stock-digest, the same src/ph_digest.c compiled against stock's headers). Each worker
  * slot is one process: fork workers play games back to back in one process (a crash or timeout ends the worker, the game is
  * recorded with the shell's exit status, and a fresh worker takes the slot); stock workers load stock once and play each game
@@ -158,7 +158,7 @@ static const char *(*f_poke)(void *, const char *);
 static int fork_load(void)
 {
     char p[4200];
-    snprintf(p, sizeof p, "%s/libnethack.so", O.lib);
+    snprintf(p, sizeof p, "%s/libpufferhack.so", O.lib);
     void *h = dlopen(p, RTLD_NOW | RTLD_LOCAL);
     if (!h) {
         fprintf(stderr, "phv: dlopen %s: %s\n", p, dlerror());

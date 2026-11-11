@@ -1,6 +1,6 @@
 # Per-env mutable-state inventory (see docs/DESIGN.md §2).
 #
-# Every writable symbol in libnethack (tools/global_baseline.txt) either gets
+# Every writable symbol in the library (tools/global_baseline.txt) either gets
 # an entry here (migrated into struct nh_ctx) or a justified entry in
 # tools/global_whitelist.txt. tools/gen_ctx.py generates the struct, accessor
 # macros, and init code from this file; run it after every edit:

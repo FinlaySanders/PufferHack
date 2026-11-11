@@ -127,7 +127,7 @@ main(int argc, char **argv)
 
     ScopedTC tc;
     nledl_ctx *nle =
-        nle_start("libnethack.so", &obs, ttyrec.get(), &settings);
+        nle_start("libpufferhack.so", &obs, ttyrec.get(), &settings);
     if (argc > 1 && argv[1][0] == 'r') {
         randgame(nle, &obs, 3, &settings);
     } else {

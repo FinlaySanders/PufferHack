@@ -1,6 +1,6 @@
 """Emit src/nh_ckpt_layout.c (pointer words, fields and copied lazy slots of struct nh_ctx) from a -g build.
 usage: NH_SRC=<source> NH_ONAMES=<build>/include/onames.h \
-       gdb -batch -ex 'set max-value-size unlimited' -ex 'source tools/gen_ckpt_layout.py' <build>/libnethack.so
+       gdb -batch -ex 'set max-value-size unlimited' -ex 'source tools/gen_ckpt_layout.py' <build>/libpufferhack.so
 Regenerate whenever struct nh_ctx or a copied slot type changes; the emitted static asserts fail the build otherwise."""
 import gdb, os, re
 NUM_OBJECTS = int(re.search(r'#define\s+NUM_OBJECTS\s+(\d+)', open(os.environ['NH_ONAMES']).read()).group(1))

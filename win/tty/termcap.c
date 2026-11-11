@@ -242,7 +242,7 @@ int *wid, *hgt;
 
     /*
      *  NLE: Removed call to tgetent: nlecl.c calls tgetent once on startup.
-     *  The call leaks if we dlclose libnethack, which dlcloses ncurses as well.
+     *  The call leaks if we dlclose the library, which dlcloses ncurses as well.
      */
     if ((pc = Tgetstr("pc")) != 0) {
         PC = *pc;

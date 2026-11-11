@@ -1069,7 +1069,7 @@ register struct trobj *trop;
     int otyp, i;
     /* The trobj arrays passed in here (Archeologist[], Monk[], ...) are
      * file-scope static. ini_inv mutates trop->trquan via --trop->trquan
-     * (and trop->trquan = 1 for weapons). In a single-libnethack vecenv
+     * (and trop->trquan = 1 for weapons). In a single-library vecenv
      * setup, that mutation persists across envs — env 2 sees env 1's
      * decremented trquan and ends up with the wrong initial inventory
      * (zero quantities, wrong-class items, duplicate spellbooks).

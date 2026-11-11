@@ -7,7 +7,7 @@
 
 /* Function-local statics in tty_getmsghistory/tty_putmsghistory.
  * These are reached from the RL frontend via winrl.cc:rl_get/putmsghistory,
- * so they race across envs sharing one libnethack.so. Migrate to per-env. */
+ * so they race across envs sharing one library. Migrate to per-env. */
 #define nxtidx           (nh_cur->g_topl_c_nxtidx)
 #define initd            (nh_cur->g_topl_c_initd)
 

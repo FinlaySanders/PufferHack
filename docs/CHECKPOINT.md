@@ -16,7 +16,7 @@ continuing the original (same RNG, same actions -> same observations, rewards an
    env's high-score file, which past-player statues and corpses are drawn from (`mk_tt_object`).
 
 Pointers in (1) and (2) are stored by kind: into the struct or a copied slot (offset), into
-libnethack (offset from its base), or into the heap (dropped; NetHack's restore rebuilds them).
+the library (offset from its base), or into the heap (dropped; NetHack's restore rebuilds them).
 That makes a blob position independent.
 
 ## Loading
@@ -44,7 +44,7 @@ P-core: save ~18 us, load ~61 us, ~300 KB per checkpoint (first calls are slower
 `src/nh_ckpt_layout.c` (pointer words, fields, copied slots) is generated from a `-g` build:
 
     NH_SRC=. NH_ONAMES=<build>/include/onames.h \
-        gdb -batch -ex 'set max-value-size unlimited' -ex 'source tools/gen_ckpt_layout.py' <build>/libnethack.so
+        gdb -batch -ex 'set max-value-size unlimited' -ex 'source tools/gen_ckpt_layout.py' <build>/libpufferhack.so
 
 It static-asserts every field's offset and size, so a struct change without regeneration fails
 the build. A new lazy slot needs a policy: copy (add it to `SLOTS` in the generator) or keep.

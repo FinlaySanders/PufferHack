@@ -1080,7 +1080,7 @@ status_finish()
 STATIC_OVL void
 init_blstats()
 {
-    /* The original `static boolean initalready` tripped under shared-libnethack
+    /* The original `static boolean initalready` tripped under shared-library
      * vecenv (env 2 saw env 1's TRUE). Moved to per-env on nle_ctx_t so the
      * once-per-game safety check is preserved across envs. */
     int i, j;

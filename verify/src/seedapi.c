@@ -84,10 +84,10 @@ int main(int argc, char **argv)
 {
     char p[4200];
     if (argc < 2) {
-        fprintf(stderr, "usage: seedapi LIBDIR (LIBDIR/libnethack.so, LIBDIR/dat)\n");
+        fprintf(stderr, "usage: seedapi LIBDIR (LIBDIR/libpufferhack.so, LIBDIR/dat)\n");
         return 2;
     }
-    snprintf(p, sizeof p, "%s/libnethack.so", argv[1]);
+    snprintf(p, sizeof p, "%s/libpufferhack.so", argv[1]);
     static char datp[4200];
     snprintf(datp, sizeof datp, "%s/dat", argv[1]);
     dat = datp;

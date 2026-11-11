@@ -1,4 +1,4 @@
-# libnethack.so and its game data without cmake, bison, flex or network: make [lib|data|install|clean|verify]
+# libpufferhack.so and its game data without cmake, bison, flex or network: make [lib|data|install|clean|verify]
 # The parsers (util/*_yacc.c, util/*_lex.c, include/*_comp.h), bzip2 and fcontext are checked in.
 MAKEFLAGS += -r
 ifeq ($(origin CC),default)
@@ -49,13 +49,13 @@ HDRS = $(wildcard include/*.h)
 
 .PHONY: all lib data install clean test verify
 all: lib data
-lib: $(BUILD)/libnethack.so
+lib: $(BUILD)/libpufferhack.so
 data: $(BUILD)/dat/nhdat
 
 # '+' hands make's jobserver to the LTO link (else -flto=auto runs one job per hardware thread)
-$(BUILD)/libnethack.so: $(OBJS) $(TPLIBS)
+$(BUILD)/libpufferhack.so: $(OBJS) $(TPLIBS)
 	+$(CXX) -fPIC $(CXXFLAGS) $(LTOFLAGS) -Wl,-Bsymbolic-functions -Wl,--wrap=malloc -Wl,--wrap=free -Wl,--wrap=calloc \
-	  -Wl,--wrap=realloc -shared -Wl,-soname,libnethack.so -o $@ $(OBJS) -lm $(TPLIBS)
+	  -Wl,--wrap=realloc -shared -Wl,-soname,libpufferhack.so -o $@ $(OBJS) -lm $(TPLIBS)
 
 # three archives in CMake's order: the same members and link as its build
 $(O)/libfcontext.a: $(FCOBJS)
@@ -122,7 +122,7 @@ $(BUILD)/dat/nhdat: $(addprefix dat/,$(DATIN)) $(TOOLS) $(GEN)
 
 install: all
 	install -d $(DESTDIR)$(PREFIX)/lib $(DESTDIR)$(PREFIX)/include $(DESTDIR)$(PREFIX)/share/nethackdir
-	install -m 755 $(BUILD)/libnethack.so $(DESTDIR)$(PREFIX)/lib/
+	install -m 755 $(BUILD)/libpufferhack.so $(DESTDIR)$(PREFIX)/lib/
 	install -m 644 include/pufferhack.h $(DESTDIR)$(PREFIX)/include/
 	cp -p $(BUILD)/dat/* $(DESTDIR)$(PREFIX)/share/nethackdir/
 
@@ -138,34 +138,34 @@ verify: all
 test: all
 	rm -rf $(BUILD)/test && mkdir -p $(BUILD)/test && cp -r $(BUILD)/dat $(BUILD)/test/hack
 	printf 'OPTIONS=name:Agent,role:Val,race:human,gender:female,align:neutral,!autopickup,nobones,nolegacy,disclose:-i -a -v -g -c -o\n' > $(BUILD)/test/nhrc
-	$(CC) -O1 -Wall -Wextra -Iinclude -o $(BUILD)/test/smoke tests/smoke.c -L$(BUILD) -lnethack -Wl,-rpath,$(abspath $(BUILD))
+	$(CC) -O1 -Wall -Wextra -Iinclude -o $(BUILD)/test/smoke tests/smoke.c -L$(BUILD) -lpufferhack -Wl,-rpath,$(abspath $(BUILD))
 	touch $(BUILD)/test/stamp && ls -d $${TMPDIR:-/dev/shm}/pufferhack-* 2>/dev/null | sort > $(BUILD)/test/vardirs.before; true
 	TMPDIR= $(BUILD)/test/smoke $(abspath $(BUILD))/dat $(BUILD)/test/nhrc
 	test -z "$$(find $(BUILD)/dat -newer $(BUILD)/test/stamp)" || { echo "FAIL: the game wrote into the data directory"; exit 1; }
 	ls -d /dev/shm/pufferhack-* /tmp/pufferhack-* 2>/dev/null | sort | comm -13 $(BUILD)/test/vardirs.before - | \
 	  { ! grep . || { echo "FAIL: a private game directory was left behind"; exit 1; }; }
 	printf 'OPTIONS=name:Agent,role:Val,race:human,gender:female,align:neutral,nosuchoption\n' > $(BUILD)/test/badrc
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/badoptions tests/badoptions.c -L$(BUILD) -lnethack \
+	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/badoptions tests/badoptions.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/badoptions $(BUILD)/test/hack $(BUILD)/test/badrc
 	$(CC) -O1 -Wno-format-truncation -Iinclude -Ithird_party/fcontext/include -Iverify/src -o $(BUILD)/test/teardown \
-	  tests/teardown.c -L$(BUILD) -lnethack -Wl,-rpath,$(abspath $(BUILD))
+	  tests/teardown.c -L$(BUILD) -lpufferhack -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/teardown $(abspath $(BUILD))/dat $(abspath $(BUILD))/test tests/teardown.keys
 	$(CC) $(DEFS) $(INCS) -O1 $(WARN) -o $(BUILD)/test/rndargs tests/rndargs.c src/rnd.c src/isaac64.c
 	$(BUILD)/test/rndargs
 	cp -r $(BUILD)/dat $(BUILD)/test/hackB
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/caches tests/caches.c -L$(BUILD) -lnethack \
+	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/caches tests/caches.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/caches $(BUILD)/test/hack $(BUILD)/test/hackB $(BUILD)/test
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/latebind tests/latebind.c -L$(BUILD) -lnethack \
+	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/latebind tests/latebind.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/latebind $(BUILD)/test/hack
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckptopts tests/ckptopts.c -L$(BUILD) -lnethack \
+	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckptopts tests/ckptopts.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/ckptopts $(BUILD)/test/hack
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_save tests/ckpt_save.c -L$(BUILD) -lnethack \
+	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_save tests/ckpt_save.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/ckpt_save $(BUILD)/test/hack
-	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_history tests/ckpt_history.c -L$(BUILD) -lnethack \
+	$(CC) -O1 -Iinclude -Ithird_party/fcontext/include -Itests -o $(BUILD)/test/ckpt_history tests/ckpt_history.c -L$(BUILD) -lpufferhack \
 	  -Wl,-rpath,$(abspath $(BUILD))
 	$(BUILD)/test/ckpt_history $(BUILD)/test/hack
